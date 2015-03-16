@@ -131,6 +131,11 @@ class QgsWFSProvider : public QgsVectorDataProvider
      */
     virtual bool changeAttributeValues( const QgsChangedAttributesMap &attr_map ) override;
 
+    /**
+     * Returns feature datasource id from FID
+     */
+    virtual QString idFromFid( const int fid ) const;
+
     /**Collects information about the field types. Is called internally from QgsWFSProvider ctor. The method delegates the work to request specific ones and gives back the name of the geometry attribute and the thematic attributes with their types*/
     int describeFeatureType( const QString& uri, QString& geometryAttribute,
                              QgsFields& fields, QGis::WkbType& geomType );

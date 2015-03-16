@@ -1596,6 +1596,12 @@ void QgsWFSProvider::appendSupportedOperations( const QDomElement& operationsEle
   }
 }
 
+QString QgsWFSProvider::idFromFid( const int fid ) const
+{
+  QMap< QgsFeatureId, QString >::const_iterator fidIt = mIdMap.find( fid );
+  return fidIt.value();
+}
+
 #if 0
 //initialization for getRenderedOnly option
 //(formerly "Only request features overlapping the current view extent")

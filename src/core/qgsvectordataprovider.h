@@ -288,6 +288,11 @@ class CORE_EXPORT QgsVectorDataProvider : public QgsDataProvider
     int fieldNameIndex( const QString& fieldName ) const;
 
     /**
+     * Returns feature datasource id from FID
+     */
+    virtual QString idFromFid( const int fid ) const;
+
+    /**
      * Return a map where the key is the name of the field and the value is its index
      */
     QMap<QString, int> fieldNameMap() const;
