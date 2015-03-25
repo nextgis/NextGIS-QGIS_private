@@ -1979,7 +1979,7 @@ void QgisApp::setTheme( QString theThemeName )
   mActionDecreaseContrast->setIcon( QgsApplication::getThemeIcon( "/mActionDecreaseContrast.svg" ) );
   mActionZoomActualSize->setIcon( QgsApplication::getThemeIcon( "/mActionZoomNative.png" ) );
   mActionQgisHomePage->setIcon( QgsApplication::getThemeIcon( "/mActionQgisHomePage.png" ) );
-  mActionAbout->setIcon( QgsApplication::getThemeIcon( "/mActionHelpAbout.png" ) );
+  mActionAbout->setIcon( QgsApplication::getThemeIcon( "/mActionHelpAbout.svg" ) );
   mActionSponsors->setIcon( QgsApplication::getThemeIcon( "/mActionHelpSponsors.png" ) );
   mActionDraw->setIcon( QgsApplication::getThemeIcon( "/mActionDraw.svg" ) );
   mActionToggleEditing->setIcon( QgsApplication::getThemeIcon( "/mActionToggleEditing.svg" ) );
