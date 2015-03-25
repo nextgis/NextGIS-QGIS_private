@@ -333,16 +333,17 @@ static void setTitleBarText_( QWidget & qgisApp )
 {
   QString caption = QgisApp::tr( "NextGIS QGIS " );
 
-  if ( QString( QGis::QGIS_VERSION ).endsWith( "Master" ) )
+  /*if ( QString( QGis::QGIS_VERSION ).endsWith( "Master" ) )
   {
     caption += QString( "%1" ).arg( QGis::QGIS_DEV_VERSION );
   }
   else
   {
     caption += QGis::QGIS_VERSION;
-  }
+  }*/
+  caption += NGQ_VERSION;
 
-  if ( QgsProject::instance()->title().isEmpty() )
+  /*if ( QgsProject::instance()->title().isEmpty() )
   {
     if ( QgsProject::instance()->fileName().isEmpty() )
     {
@@ -358,7 +359,7 @@ static void setTitleBarText_( QWidget & qgisApp )
   else
   {
     caption += " - " + QgsProject::instance()->title();
-  }
+  }*/
 
   qgisApp.setWindowTitle( caption );
 } // setTitleBarText_( QWidget * qgisApp )
@@ -683,7 +684,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
   connect( QgsMapLayerActionRegistry::instance(), SIGNAL( changed() ), this, SLOT( refreshActionFeatureAction() ) );
 
   // set application's caption
-  QString caption = tr( "NextGIS QGIS - %1 ('%2')" ).arg( QGis::QGIS_VERSION ).arg( QGis::QGIS_RELEASE_NAME );
+  //QString caption = tr( "NextGIS QGIS - %1 ('%2')" ).arg( QGis::QGIS_VERSION ).arg( QGis::QGIS_RELEASE_NAME );
+  QString caption = tr( "NextGIS QGIS - %1" ).arg( NGQ_VERSION );
   setWindowTitle( caption );
 
   QgsMessageLog::logMessage( tr( "QGIS starting..." ), QString::null, QgsMessageLog::INFO );
