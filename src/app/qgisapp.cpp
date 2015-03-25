@@ -1981,7 +1981,7 @@ void QgisApp::setTheme( QString theThemeName )
   mActionDecreaseContrast->setIcon( QgsApplication::getThemeIcon( "/mActionDecreaseContrast.svg" ) );
   mActionZoomActualSize->setIcon( QgsApplication::getThemeIcon( "/mActionZoomNative.png" ) );
   mActionQgisHomePage->setIcon( QgsApplication::getThemeIcon( "/mActionQgisHomePage.png" ) );
-  mActionAbout->setIcon( QgsApplication::getThemeIcon( "/mActionHelpAbout.png" ) );
+  mActionAbout->setIcon( QgsApplication::getThemeIcon( "/mActionHelpAbout.svg" ) );
   mActionSponsors->setIcon( QgsApplication::getThemeIcon( "/mActionHelpSponsors.png" ) );
   mActionDraw->setIcon( QgsApplication::getThemeIcon( "/mActionDraw.svg" ) );
   mActionToggleEditing->setIcon( QgsApplication::getThemeIcon( "/mActionToggleEditing.svg" ) );
@@ -3113,36 +3113,12 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
 
   QStringList layers;
   QStringList names;
+  QString name;
+  QString path = layer->source();
+  QString fileName = QFileInfo( path ).baseName();
   for ( int i = 0; i < sublayers.size(); i++ )
   {
-    // simplify raster sublayer name - should add a function in gdal provider for this?
-    // code is copied from QgsGdalLayerItem::createChildren
-    QString name = sublayers[i];
-    QString path = layer->source();
-    // if netcdf/hdf use all text after filename
-    // for hdf4 it would be best to get description, because the subdataset_index is not very practical
-    if ( name.startsWith( "netcdf", Qt::CaseInsensitive ) ||
-         name.startsWith( "hdf", Qt::CaseInsensitive ) )
-      name = name.mid( name.indexOf( path ) + path.length() + 1 );
-    else
-    {
-      // remove driver name and file name
-      name.replace( name.split( ":" )[0], "" );
-      name.replace( path, "" );
-    }
-    // remove any : or " left over
-    if ( name.startsWith( ":" ) )
-      name.remove( 0, 1 );
-
-    if ( name.startsWith( "\"" ) )
-      name.remove( 0, 1 );
-
-    if ( name.endsWith( ":" ) )
-      name.chop( 1 );
-
-    if ( name.endsWith( "\"" ) )
-      name.chop( 1 );
-
+    name = normalizeGDALSublayerName(path, sublayers[i]);
     names << name;
     layers << QString( "%1|%2" ).arg( i ).arg( name );
   }
@@ -3153,7 +3129,7 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
   {
     foreach ( int i, chooseSublayersDialog.selectionIndexes() )
     {
-      QgsRasterLayer *rlayer = new QgsRasterLayer( sublayers[i], names[i] );
+      QgsRasterLayer *rlayer = new QgsRasterLayer( sublayers[i], QString( "%1 (%2)" ).arg( fileName ).arg( names[i] ) );
       if ( rlayer && rlayer->isValid() )
       {
         addRasterLayer( rlayer );
@@ -3186,13 +3162,13 @@ void QgisApp::loadGDALSublayers( QString uri, QStringList list )
   QString path, name;
   QgsRasterLayer *subLayer = NULL;
 
+  // maybe better use completeBaseName?
+  QString fileName = QFileInfo( uri ).baseName();
   //add layers in reverse order so they appear in the right order in the layer dock
   for ( int i = list.size() - 1; i >= 0 ; i-- )
   {
     path = list[i];
-    // shorten name by replacing complete path with filename
-    name = path;
-    name.replace( uri, QFileInfo( uri ).completeBaseName() );
+    name = QString( "%1 (%2)" ).arg( fileName ).arg( normalizeGDALSublayerName( uri, path ) );
     subLayer = new QgsRasterLayer( path, name );
     if ( subLayer )
     {
@@ -3203,6 +3179,38 @@ void QgisApp::loadGDALSublayers( QString uri, QStringList list )
     }
 
   }
+}
+
+QString QgisApp::normalizeGDALSublayerName( const QString uri, const QString sublayer )
+{
+  // simplify raster sublayer name - should add a function in gdal provider for this?
+  // code is copied from QgsGdalLayerItem::createChildren
+  QString name = sublayer;
+  // if netcdf/hdf use all text after filename
+  // for hdf4 it would be best to get description, because the subdataset_index is not very practical
+  if ( name.startsWith( "netcdf", Qt::CaseInsensitive ) ||
+       name.startsWith( "hdf", Qt::CaseInsensitive ) )
+    name = name.mid( name.indexOf( uri ) + uri.length() + 1 );
+  else
+  {
+    // remove driver name and file name
+    name.replace( name.split( ":" )[0], "" );
+    name.replace( uri, "" );
+  }
+  // remove any : or " left over
+  if ( name.startsWith( ":" ) )
+    name.remove( 0, 1 );
+
+  if ( name.startsWith( "\"" ) )
+    name.remove( 0, 1 );
+
+  if ( name.endsWith( ":" ) )
+    name.chop( 1 );
+
+  if ( name.endsWith( "\"" ) )
+    name.chop( 1 );
+
+  return name;
 }
 
 // This method is the method that does the real job. If the layer given in
@@ -3276,7 +3284,7 @@ void QgisApp::loadOGRSublayers( QString layertype, QString uri, QStringList list
     // addVectorLayer( composedURI, list.at( i ), "ogr" );
 
     QgsDebugMsg( "Creating new vector layer using " + composedURI );
-    QString name = list.at( i );
+    QString name = QString( "%1 (%2)" ).arg( fileName ).arg( list.at( i ) );
     name.replace( ":", " " );
     QgsVectorLayer *layer = new QgsVectorLayer( composedURI, name, "ogr", false );
     if ( layer && layer->isValid() )
@@ -5024,6 +5032,9 @@ void QgisApp::saveAsRasterFile()
                                 this );
   if ( d.exec() == QDialog::Accepted )
   {
+    QSettings settings;
+    settings.setValue( "/UI/lastRasterFileDir", QFileInfo( d.outputFileName() ).absolutePath() );
+
     QgsRasterFileWriter fileWriter( d.outputFileName() );
     if ( d.tileMode() )
     {

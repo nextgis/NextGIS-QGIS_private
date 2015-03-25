@@ -1289,6 +1289,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
                                            const QString & providerKey, bool guiWarning,
                                            bool guiUpdate );
 
+    QString normalizeGDALSublayerName( const QString uri, const QString sublayer );
+
     /** add this file to the recently opened/saved projects list
      *  pass settings by reference since creating more than one
      * instance simultaneously results in data loss.
