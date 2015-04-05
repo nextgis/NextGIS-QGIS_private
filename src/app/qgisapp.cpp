@@ -2931,7 +2931,7 @@ bool QgisApp::addVectorLayers( const QStringList &theLayerQStringList, const QSt
         QStringList sublayers = layer->dataProvider()->subLayers();
         QStringList elements = sublayers.at( 0 ).split( ":" );
         if ( layer->storageType() != "GeoJSON" )
-          layer->setLayerName( elements.at( 1 ) );
+          layer->setLayerName( QString( "%1 (%2)" ).arg( base ).arg( elements.at( 1 ) ) );
         myList << layer;
       }
       else
@@ -3118,7 +3118,7 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
   QString fileName = QFileInfo( path ).baseName();
   for ( int i = 0; i < sublayers.size(); i++ )
   {
-    name = normalizeGDALSublayerName(path, sublayers[i]);
+    name = normalizeGDALSublayerName( path, sublayers[i] );
     names << name;
     layers << QString( "%1|%2" ).arg( i ).arg( name );
   }
@@ -3162,7 +3162,6 @@ void QgisApp::loadGDALSublayers( QString uri, QStringList list )
   QString path, name;
   QgsRasterLayer *subLayer = NULL;
 
-  // maybe better use completeBaseName?
   QString fileName = QFileInfo( uri ).baseName();
   //add layers in reverse order so they appear in the right order in the layer dock
   for ( int i = list.size() - 1; i >= 0 ; i-- )
