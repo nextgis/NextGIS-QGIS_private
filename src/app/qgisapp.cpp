@@ -3115,7 +3115,7 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
   QStringList names;
   QString name;
   QString path = layer->source();
-  QString fileName = QFileInfo( path ).baseName();
+  QString fileName = QFileInfo( path ).completeBaseName();
   for ( int i = 0; i < sublayers.size(); i++ )
   {
     name = normalizeGDALSublayerName( path, sublayers[i] );
@@ -3162,7 +3162,7 @@ void QgisApp::loadGDALSublayers( QString uri, QStringList list )
   QString path, name;
   QgsRasterLayer *subLayer = NULL;
 
-  QString fileName = QFileInfo( uri ).baseName();
+  QString fileName = QFileInfo( uri ).completeBaseName();
   //add layers in reverse order so they appear in the right order in the layer dock
   for ( int i = list.size() - 1; i >= 0 ; i-- )
   {
@@ -3258,7 +3258,7 @@ void QgisApp::loadOGRSublayers( QString layertype, QString uri, QStringList list
 {
   // The uri must contain the actual uri of the vectorLayer from which we are
   // going to load the sublayers.
-  QString fileName = QFileInfo( uri ).baseName();
+  QString fileName = QFileInfo( uri ).completeBaseName();
   QList<QgsMapLayer *> myList;
   for ( int i = 0; i < list.size(); i++ )
   {
