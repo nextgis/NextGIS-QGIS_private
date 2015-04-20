@@ -957,14 +957,14 @@ void QgsProjectProperties::on_cbxProjectionEnabled_toggled( bool onFlyEnabled )
     mProjectSrsId = mLayerSrsId;
     projectionSelector->setSelectedCrsId( mLayerSrsId );
 
-    QgsCoordinateReferenceSystem srs( mLayerSrsId, QgsCoordinateReferenceSystem::InternalCrsId );
-    //set radio button to crs map unit type
-    QGis::UnitType units = srs.mapUnits();
-
-    radMeters->setChecked( units == QGis::Meters );
-    radFeet->setChecked( units == QGis::Feet );
-    radNMiles->setChecked( units == QGis::NauticalMiles );
-    radDegrees->setChecked( units == QGis::Degrees );
+    //~ QgsCoordinateReferenceSystem srs( mLayerSrsId, QgsCoordinateReferenceSystem::InternalCrsId );
+    //~ //set radio button to crs map unit type
+    //~ QGis::UnitType units = srs.mapUnits();
+//~
+    //~ radMeters->setChecked( units == QGis::Meters );
+    //~ radFeet->setChecked( units == QGis::Feet );
+    //~ radNMiles->setChecked( units == QGis::NauticalMiles );
+    //~ radDegrees->setChecked( units == QGis::Degrees );
 
     // unset ellipsoid
     mEllipsoidIndex = 0;
