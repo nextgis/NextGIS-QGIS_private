@@ -3382,7 +3382,8 @@ int QgsPalLabeling::prepareLayer( QgsVectorLayer* layer, QStringList& attrNames,
 
 int QgsPalLabeling::addDiagramLayer( QgsVectorLayer* layer, const QgsDiagramLayerSettings *s )
 {
-  Layer* l = mPal->addLayer( layer->id().append( "d" ).toUtf8().data(), -1, -1, pal::Arrangement( s->placement ), METER, s->priority, s->obstacle, true, true );
+  double priority = 1 - s->priority / 10.0; // convert 0..10 --> 1..0
+  Layer* l = mPal->addLayer( layer->id().append( "d" ).toUtf8().data(), -1, -1, pal::Arrangement( s->placement ), METER, priority, s->obstacle, true, true );
   l->setArrangementFlags( s->placementFlags );
 
   mActiveDiagramLayers.insert( layer->id(), *s );
@@ -3416,6 +3417,26 @@ void QgsPalLabeling::registerDiagramFeature( const QString& layerID, QgsFeature&
   if ( layerIt == mActiveDiagramLayers.constEnd() )
   {
     return;
+  }
+
+  QgsDiagramRendererV2* dr = layerIt.value().renderer;
+  if ( dr )
+  {
+    QList<QgsDiagramSettings> settingList = dr->diagramSettings();
+    if ( settingList.size() > 0 )
+    {
+      double minScale = settingList.at( 0 ).minScaleDenominator;
+      if ( minScale > 0 && context.rendererScale() < minScale )
+      {
+        return;
+      }
+
+      double maxScale = settingList.at( 0 ).maxScaleDenominator;
+      if ( maxScale > 0 && context.rendererScale() > maxScale )
+      {
+        return;
+      }
+    }
   }
 
   //convert geom to geos
@@ -3456,7 +3477,6 @@ void QgsPalLabeling::registerDiagramFeature( const QString& layerID, QgsFeature&
 
   double diagramWidth = 0;
   double diagramHeight = 0;
-  QgsDiagramRendererV2* dr = layerIt.value().renderer;
   if ( dr )
   {
     QSizeF diagSize = dr->sizeMapUnits( feat, context );
@@ -4004,7 +4024,7 @@ void QgsPalLabeling::drawLabeling( QgsRenderContext& context )
           feature.setFields( &dit.value().fields );
           palGeometry->feature( feature );
           QgsPoint outPt = xform.transform(( *it )->getX(), ( *it )->getY() );
-          dit.value().renderer->renderDiagram( feature, context, QPointF( outPt.x(), outPt.y() ) );
+          dit.value().renderer->renderDiagram( feature, context, outPt.toQPointF() );
         }
       }
 
