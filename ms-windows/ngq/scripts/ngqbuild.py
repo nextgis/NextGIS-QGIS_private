@@ -43,12 +43,12 @@ def Configurating(qgis_src_dir, install_dirname):
 
 def Building(qgis_build_dir, project_file):
     print "project_file: ", project_file
-    builder_bat = os.path.join(currnet_dir, "build.bat")
+    builder_bat = os.path.join(currnet_dir, "ngq-build.bat")
     
     try:
         res = subprocess.check_call([builder_bat, qgis_build_dir, project_file], stdout=sys.stdout)
     except:
-        print "ERROR: Building QGIS faild (%s). cmd:\n"%qgis_build_dir, cmd
+        print "ERROR: Building QGIS faild (%s). cmd:\n"%qgis_build_dir, [builder_bat, qgis_build_dir, project_file]
         return False
     
     if res == 0:
