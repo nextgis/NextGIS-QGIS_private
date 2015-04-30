@@ -1,7 +1,7 @@
 #############################################################
 # NextGIS QGIS settings
 SET(NGQ_VERSION_MAJOR "15")
-SET(NGQ_VERSION_MINOR "3")
+SET(NGQ_VERSION_MINOR "4")
 SET(NGQ_VERSION ${NGQ_VERSION_MAJOR}.${NGQ_VERSION_MINOR})
 
 MESSAGE(STATUS "NextGIS QGIS version: ${NGQ_VERSION}")
