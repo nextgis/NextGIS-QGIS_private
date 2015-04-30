@@ -2931,7 +2931,7 @@ bool QgisApp::addVectorLayers( const QStringList &theLayerQStringList, const QSt
         QStringList sublayers = layer->dataProvider()->subLayers();
         QStringList elements = sublayers.at( 0 ).split( ":" );
         if ( layer->storageType() != "GeoJSON" )
-          layer->setLayerName( elements.at( 1 ) );
+          layer->setLayerName( QString( "%1 (%2)" ).arg( base ).arg( elements.at( 1 ) ) );
         myList << layer;
       }
       else
@@ -3115,10 +3115,10 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
   QStringList names;
   QString name;
   QString path = layer->source();
-  QString fileName = QFileInfo( path ).baseName();
+  QString fileName = QFileInfo( path ).completeBaseName();
   for ( int i = 0; i < sublayers.size(); i++ )
   {
-    name = normalizeGDALSublayerName(path, sublayers[i]);
+    name = normalizeGDALSublayerName( path, sublayers[i] );
     names << name;
     layers << QString( "%1|%2" ).arg( i ).arg( name );
   }
@@ -3162,8 +3162,7 @@ void QgisApp::loadGDALSublayers( QString uri, QStringList list )
   QString path, name;
   QgsRasterLayer *subLayer = NULL;
 
-  // maybe better use completeBaseName?
-  QString fileName = QFileInfo( uri ).baseName();
+  QString fileName = QFileInfo( uri ).completeBaseName();
   //add layers in reverse order so they appear in the right order in the layer dock
   for ( int i = list.size() - 1; i >= 0 ; i-- )
   {
@@ -3259,7 +3258,7 @@ void QgisApp::loadOGRSublayers( QString layertype, QString uri, QStringList list
 {
   // The uri must contain the actual uri of the vectorLayer from which we are
   // going to load the sublayers.
-  QString fileName = QFileInfo( uri ).baseName();
+  QString fileName = QFileInfo( uri ).completeBaseName();
   QList<QgsMapLayer *> myList;
   for ( int i = 0; i < list.size(); i++ )
   {
@@ -5664,7 +5663,7 @@ bool QgisApp::loadComposersFromProject( const QDomDocument& doc )
 void QgisApp::deletePrintComposers()
 {
   QSet<QgsComposer*>::iterator it = mPrintComposers.begin();
-  for ( ; it != mPrintComposers.end(); ++it )
+  while ( it != mPrintComposers.end() )
   {
     emit composerWillBeRemoved(( *it )->view() );
 
@@ -5680,8 +5679,8 @@ void QgisApp::deletePrintComposers()
     {
       delete composition;
     }
+    it = mPrintComposers.erase( it );
   }
-  mPrintComposers.clear();
   mLastComposerId = 0;
   markDirty();
 }
