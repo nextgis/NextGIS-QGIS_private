@@ -5,6 +5,7 @@ SET(NGQ_VERSION_MINOR "3")
 SET(NGQ_VERSION ${NGQ_VERSION_MAJOR}.${NGQ_VERSION_MINOR})
 
 MESSAGE(STATUS "NextGIS QGIS version: ${NGQ_VERSION}")
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/ms-windows/ngq/nsis/nextgis_qgis-verison.nsh.in ${CMAKE_CURRENT_SOURCE_DIR}/ms-windows/ngq/nsis/nextgis_qgis-verison.nsh)
 
 #############################################################
 # QGIS settings

@@ -1,0 +1,6 @@
+@echo off
+
+cd /D %OSGEO4W_ROOT%\ngq-utils
+
+set FONTS_FOLDER=%SYSTEMROOT%\fonts
+
