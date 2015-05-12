@@ -104,7 +104,8 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
             plugins.append( os.path.join(ngq_customization_dir, "plugins", pl[u'name']) )
     
         plugins_str = " ".join(plugins)
-        make_installer_command.append( "/DPLUGINS=%s"%plugins_str )
+        if len(plugins) > 0:
+            make_installer_command.append( "/DPLUGINS=%s"%plugins_str )
     '''/DNGQ_BUILD_NUM=%3 ^'''
     if ngq_build_num is not None:
         make_installer_command.append( "/DNGQ_BUILD_NUM=%s"%str(ngq_build_num) )
@@ -173,7 +174,7 @@ args = parser.parse_args()
 
 ngq_customization_dir = None
 if args.configuration_zip is not None:
-    setting_zip = args.setting_zip
+    setting_zip = args.configuration_zip
 
     if not os.path.exists(setting_zip):
         sys.exit("Configuration zip file not found")
