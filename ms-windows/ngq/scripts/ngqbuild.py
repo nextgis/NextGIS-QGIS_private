@@ -24,6 +24,8 @@ ngq_install_fonts_bat = os.path.join(ngq_install_utils_dir, "install_fonts.bat")
 
 default_qgis_options_dir = os.path.join(currnet_dir, "..", "ngq_default_options")
 
+default_scripts_dir = os.path.join(currnet_dir, "..", "ngq_run_scripts")
+
 def Configurating(qgis_src_dir, install_dirname):
     conf_qgis_script_filename =  os.path.join(currnet_dir, "configurate.bat")
     qgis_build_dir = tempfile.mkdtemp('','qgis_build_')
@@ -80,11 +82,29 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     #make_installer_bat = os.path.join(currnet_dir, "make_installer.bat")
     make_installer_command = ["makensis.exe"]
     
+    run_scripts_dir = None
+    
     if ngq_customization_conf.has_key(u'prog_name'):
         make_installer_command.append( "/DPROGRAM_NAME=%s"%ngq_customization_conf[u'prog_name'] )
+        
+        '''QGIS_RUN_SCRIPTS_DIR'''
+        run_scripts_dir = prepareRunScripts(default_scripts_dir, ngq_customization_conf[u'prog_name'])
+        make_installer_command.append( "/DQGIS_RUN_SCRIPTS_DIR=%s"%run_scripts_dir )
+        
+        '''NextGIS_QGIS_RUN_LNK_NAME'''
+        if ngq_customization_conf.has_key(u'ngq_shortcut_name'):
+            make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_NAME=%s"%ngq_customization_conf[u'ngq_shortcut_name'] )
+        else:
+            make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_NAME=%s"%ngq_customization_conf[u'prog_name'] )
+            
     if ngq_customization_conf.has_key(u'installer_name'):
         make_installer_command.append( "/DINSTALLER_NAME=%s"%ngq_customization_conf[u'installer_name'] )
     
+    '''NextGIS_QGIS_RUN_LNK_ICO_FileName'''
+    if ngq_customization_conf.has_key(u'ngq_icon'):
+        make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_ICO_FileName=%s"%ngq_customization_conf[u'ngq_icon'] )
+        make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_ICO_Path=%s"%os.path.join(ngq_customization_dir,ngq_customization_conf[u'ngq_icon']) )
+        
     '''/DOSGEO4W_SRC_DIR=%OSGEO_ENV_FOR_INSTALLER%'''
     make_installer_command.append( "/DOSGEO4W_SRC_DIR=%s"%os.getenv("OSGEO_ENV_FOR_INSTALLER", "").strip('"') )
     '''/DQGIS_SRC_DIR=%2 ^'''
@@ -157,6 +177,8 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
         sys.exit("ERROR! Make installer error: Unexpected error: %s\n"%sys.exc_info()[0])
     
     shutil.rmtree(qgis_options_dir)
+    if run_scripts_dir is not None:
+        shutil.rmtree(run_scripts_dir)
     
     os.chdir(cwd)
 

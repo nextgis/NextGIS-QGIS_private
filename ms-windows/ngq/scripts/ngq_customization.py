@@ -25,8 +25,8 @@ def processPatchTemplate(vars, src_filename, dst_filename):
 def prepareRunScripts(default_scripts_dir, prog_name):
     scripts_dir = tempfile.mkdtemp('','ngq_run_scripts_')
     vars = {"PROGRAM_NAME":prog_name}
-    processPatchTemplate( vars, os.path.join(default_scripts_dir, "qgis.bat"), os.path.join(scripts_dir, "qgis.bat") )
-    processPatchTemplate( vars, os.path.join(default_scripts_dir, "qgis_preruner.bat"), os.path.join(scripts_dir, "qgis_preruner.bat") )
+    processPatchTemplate( vars, os.path.join(default_scripts_dir, "qgis.bat.in"), os.path.join(scripts_dir, "qgis.bat") )
+    processPatchTemplate( vars, os.path.join(default_scripts_dir, "qgis_preruner.bat.in"), os.path.join(scripts_dir, "qgis_preruner.bat") )
     return scripts_dir
     
 def prepareQGISSettings(default_settings_dir, plugins):
