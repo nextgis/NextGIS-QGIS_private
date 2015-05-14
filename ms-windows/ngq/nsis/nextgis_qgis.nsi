@@ -17,7 +17,7 @@
 !define WIKI_PAGE ""
 
 !ifndef INSTALLER_NAME    
-    !define INSTALLER_NAME "ngq"
+    !define INSTALLER_NAME "nextgis-qgis-setup"
 !endif
 
 !define INSTALLER_NAME_WITH_VERS "${INSTALLER_NAME}-${PROGRAM_VERSION}"
@@ -36,7 +36,7 @@
 !endif
 
 !ifndef NextGIS_QGIS_RUN_LNK_NAME
-    !define NextGIS_QGIS_RUN_LNK_NAME "NGQ (${PROGRAM_VERSION})"
+    !define NextGIS_QGIS_RUN_LNK_NAME "NextGIS QGIS (${PROGRAM_VERSION})"
 !endif
 
 !ifndef NextGIS_QGIS_RUN_LNK_ICO_FileName
