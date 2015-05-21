@@ -8,6 +8,7 @@ import subprocess
 import shutil
 import zipfile
 import json
+import re
 
 from patching_qgis_src import patchQGISsrc
 from ngq_customization import prepareQGISSettings, prepareRunScripts
@@ -169,7 +170,15 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
         
     make_installer_command.append(nsis_script_name)
     try:
-        res = subprocess.check_call(make_installer_command)
+        res = subprocess.check_output(make_installer_command)
+        print res
+        
+        output_desc_line = re.search('Output: ".+"', res).group()
+        installer_name = re.search('".+"', output_desc_line).group()
+        installer_name = installer_name.strip('"')
+        
+        with open(os.path.join(ngq_installer_dst_dir, ".meta-ngq"), 'w') as f:
+            f.write(os.path.basename(installer_name))
         
     except subprocess.CalledProcessError as ex:
         sys.exit("ERROR! Make installer error: %s\n"%str(ex))
