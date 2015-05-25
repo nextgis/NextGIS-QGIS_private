@@ -8,11 +8,11 @@ index 51ada4b..87f4884 100644
      mOptionsListWidget->item( DEVELOPERS_MAP_INDEX )->setHidden( true );
 -
 +  
-+  unsigned char indexes[] = {{LIST_INDEX_ADD}};
-+  QString pages_names[] = {{LIST_NAME_ADD}};
-+  QString content_filenames[] = {{LIST_CONTENT_FILENAME_ADD}};
++  unsigned char indexes[] = {0, {LIST_INDEX_ADD}};
++  QString pages_names[] = {"0", {LIST_NAME_ADD}};
++  QString content_filenames[] = {"0", {LIST_CONTENT_FILENAME_ADD}};
 +  unsigned char indexes_count = sizeof(indexes)/sizeof(unsigned char);
-+  for(unsigned char index = 0; index < indexes_count; index++)
++  for(unsigned char index = 1; index < indexes_count; index++)
 +  {
 +      mOptionsListWidget->insertItem(indexes[index], QgsAbout::tr(pages_names[index].toStdString().c_str()) );
 +      QTextBrowser* tb = new QTextBrowser(this);
@@ -36,9 +36,9 @@ index 51ada4b..87f4884 100644
 +      mOptionsStackedWidget->insertWidget(indexes[index], tb);
 +  }
 +  
-+  unsigned char indexes_for_del[] = {{LIST_INDEX_DEL}};
++  unsigned char indexes_for_del[] = {0, {LIST_INDEX_DEL}};
 +  unsigned char indexes_for_del_count = sizeof(indexes_for_del)/sizeof(unsigned char);
-+  for(unsigned char index = 0; index < indexes_for_del_count; index++)
++  for(unsigned char index = 1; index < indexes_for_del_count; index++)
 +      mOptionsListWidget->item( indexes_for_del[index] )->setHidden( true );
 +  
    developersMapView->page()->setLinkDelegationPolicy( QWebPage::DelegateAllLinks );
