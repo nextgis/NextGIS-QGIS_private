@@ -1,13 +1,14 @@
 SetCompressor /SOLID lzma
 RequestExecutionLevel admin
 
-Name "${PROGRAM_NAME}"
-OutFile "${OUTPUT_FILE}"
-InstallDir "${DEFAULT_INSTALL_DIR}"
-
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "utils.nsh"
+
+Name "${PROGRAM_NAME}"
+OutFile "${OUTPUT_FILE}"
+
+InstallDir "${DEFAULT_INSTALL_DIR}"
 
 !addplugindir plugins
 
@@ -154,6 +155,8 @@ Section "-OSGEO4W_ENV" OSGEO4W_ENV
     File /r ${OSGEO4W_SRC_DIR}
 SectionEnd
 
+SectionGroup "Components"
+
 !ifdef  GRASS_SRC_DIR
 Section "GRASS" GRASS
     SetOutPath "$INSTALL_DIR\"
@@ -180,8 +183,13 @@ Section "-NGQ" NGQ
 SectionEnd
 
 Section "-NGQ_CUSTOMIZATION" NGQ_CUSTOMIZATION
-    SetOutPath "$INSTALL_DIR\defalut_options"
-    File /r "${QGIS_DEFAULT_OPTIONS_PATH}\*"
+    ${If} ${QGIS_DEFAULT_OPTIONS_COUNT} == 1
+        SetOutPath "$INSTALL_DIR\defalut_options\QGIS"
+        File /r "${QGIS_DEFAULT_OPTIONS_1_PATH}\*"
+    ${EndIf}
+    
+    SetOutPath "$INSTALL_DIR\defalut_options\python"
+    File /r "..\ngq_default_options\python\foo.txt"
     
     SetOutPath "$INSTALL_DIR\bin"
     File /r "${QGIS_RUN_BAT}"
@@ -241,6 +249,24 @@ SectionEnd
         SetOutPath "$INSTALL_DIR\ngq-utils"
     SectionEnd
 !endif
+SectionGroupEnd
+!ifdef QGIS_DEFAULT_OPTIONS_2_PATH
+SectionGroup "User interface"
+    !ifdef QGIS_DEFAULT_OPTIONS_1_PATH
+        Section /o "Customization - ${QGIS_DEFAULT_OPTIONS_1_NAME}" qgs_cust_1
+            SetOutPath "$INSTALL_DIR\defalut_options\QGIS"
+            File /r "${QGIS_DEFAULT_OPTIONS_1_PATH}\*.*"
+        SectionEnd
+    !endif
+    !ifdef QGIS_DEFAULT_OPTIONS_2_PATH
+        Section "Customization - ${QGIS_DEFAULT_OPTIONS_2_NAME}" qgs_cust_2
+            SetOutPath "$INSTALL_DIR\defalut_options\QGIS"
+            File /r "${QGIS_DEFAULT_OPTIONS_2_PATH}\*.*"
+        SectionEnd
+    !endif
+SectionGroupEnd
+!endif
+
 ;--------------------------------
 ;Language strings
 LangString QGIS_MAN ${LANG_RUSSIAN} "Руководство пользователя QGIS"
@@ -251,8 +277,8 @@ LangString DEL_QGIS ${LANG_RUSSIAN} "Удалить"
 LangString DEL_QGIS ${LANG_ENGLISH} "Delete"
 LangString RUN_QGIS ${LANG_RUSSIAN} "Запустить"
 LangString RUN_QGIS ${LANG_ENGLISH} "Run"
-#LangString SET_DEFAULT_SETTINGS ${LANG_RUSSIAN} "Установить настройки по-умолчанию"
-#LangString SET_DEFAULT_SETTINGS ${LANG_ENGLISH} "Set default settings"
+LangString SET_DEFAULT_SETTINGS ${LANG_RUSSIAN} "Установить настройки по-умолчанию"
+LangString SET_DEFAULT_SETTINGS ${LANG_ENGLISH} "Set default settings"
 ;--------------------------------
 
 Section "-DONE"
@@ -292,15 +318,15 @@ NoRebootNecessary:
     CreateShortCut "$SMPROGRAMS\${SMPROGRAMS_FOLDER_NAME_EN}\${NextGIS_QGIS_RUN_LNK_NAME}.lnk" "$INSTALL_DIR\bin\nircmd.exe" 'exec hide "$INSTALL_DIR\bin\qgis.bat"' \
     "$INSTALL_DIR\icons\${NextGIS_QGIS_RUN_LNK_ICO_FileName}" "" SW_SHOWNORMAL "" "$(RUN_QGIS) ${SMPROGRAMS_FOLDER_NAME_EN}"
     
-    #Delete "$SMPROGRAMS\${PROGRAM_NAME}\$(SET_DEFAULT_SETTINGS).lnk"
-    #CreateShortCut \
-    #"$SMPROGRAMS\${PROGRAM_NAME}\$(SET_DEFAULT_SETTINGS).lnk" \
-    #"$INSTALL_DIR\bin\nircmd.exe" 'exec hide "$INSTALL_DIR\bin\qgis_preruner.bat"' \
-    #"$INSTALL_DIR\icons\${NextGIS_QGIS_RUN_LNK_ICO_FileName}" \
-    #"" \
-    #SW_SHOWNORMAL \
-    #"" \
-    #"$(SET_DEFAULT_SETTINGS)"
+    Delete "$SMPROGRAMS\${PROGRAM_NAME}\$(SET_DEFAULT_SETTINGS).lnk"
+    CreateShortCut \
+    "$SMPROGRAMS\${PROGRAM_NAME}\$(SET_DEFAULT_SETTINGS).lnk" \
+    "$INSTALL_DIR\bin\nircmd.exe" 'exec hide "$INSTALL_DIR\bin\qgis_preruner.bat"' \
+    "$INSTALL_DIR\icons\${NextGIS_QGIS_RUN_LNK_ICO_FileName}" \
+    "" \
+    SW_SHOWNORMAL \
+    "" \
+    "$(SET_DEFAULT_SETTINGS)"
     
     Delete "$SMPROGRAMS\${SMPROGRAMS_FOLDER_NAME_EN}\$(DEL_QGIS) ${NextGIS_QGIS_UNINSTALL_LNK_NAME_SUFFIX}.lnk"
     CreateShortCut "$SMPROGRAMS\${SMPROGRAMS_FOLDER_NAME_EN}\$(DEL_QGIS) ${NextGIS_QGIS_UNINSTALL_LNK_NAME_SUFFIX}.lnk" "$INSTALL_DIR\${NextGIS_QGIS_UNINSTALLER_FileName}" "" \
@@ -330,6 +356,12 @@ LangString ALREADY_INSTALL_MSG ${LANG_ENGLISH} "\
     $\n$\nPress `OK` to delete ${PROGRAM_NAME} ($0) and reinstall ${PROGRAM_NAME} (${PROGRAM_VERSION}) or 'Cancel' to quit."
     
 Function .onInit
+    ${StrRep} $0 "${PROGRAM_NAME}" " " "_"
+    StrCpy $INSTDIR "c:\$0"
+
+    ${If} ${QGIS_DEFAULT_OPTIONS_COUNT} > 1
+        StrCpy $9 ${qgs_cust_1}
+    ${EndIf}
     !insertmacro MUI_LANGDLL_DISPLAY
     
     Var /GLOBAL uninstaller_path
@@ -362,6 +394,19 @@ Function .onInit
             continue_uninstall:
                 RMDir /r "$installer_path"
     ${EndIf}
+FunctionEnd
+
+Function .onSelChange
+  ${If} ${QGIS_DEFAULT_OPTIONS_COUNT} > 1
+      !insertmacro StartRadioButtons $9
+        !ifdef QGIS_DEFAULT_OPTIONS_1_PATH
+            !insertmacro RadioButton ${qgs_cust_1}
+        !endif
+        !ifdef QGIS_DEFAULT_OPTIONS_2_PATH
+            !insertmacro RadioButton ${qgs_cust_2}
+        !endif
+      !insertmacro EndRadioButtons
+  ${EndIf}
 FunctionEnd
 
 ;--------------------------------

@@ -135,12 +135,23 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     '''/DDEFAULT_PROJECT=%9 ^'''
     if ngq_customization_conf.has_key(u'def_project'):
         make_installer_command.append( "/DDEFAULT_PROJECT=%s"%ngq_customization_conf[u'def_project'].encode("cp1251") )
-    '''/DQGIS_DEFAULT_OPTIONS_PATH=%8 ^'''
-    qgis_options_dir = default_qgis_options_dir
-    if ngq_customization_conf.has_key(u'default_qgis_options_dir'):
-        qgis_options_dir = os.path.join(ngq_customization_dir, ngq_customization_conf[u'default_qgis_options_dir'].encode("cp1251"))
-    qgis_options_dir = prepareQGISSettings(qgis_options_dir, plugins)
-    make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_PATH=%s"%qgis_options_dir )
+    
+    '''QGIS_DEFAULT_OPTIONS'''
+    #qgis_options_dir = default_qgis_options_dir
+    qgis_options_dirs_tmp = []
+    if ngq_customization_conf.has_key(u'default_qgis_options_dirs'):
+        qgis_options_dirs = ngq_customization_conf[u'default_qgis_options_dirs']
+        counter = 0
+        for dir in qgis_options_dirs.items():
+            qgis_options_name = dir[0]
+            qgis_options_dir = os.path.join(ngq_customization_dir, dir[1])
+            qgis_options_dir = prepareQGISSettings(qgis_options_dir, plugins)
+            counter +=1
+            make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_%d_NAME=%s"%(counter, qgis_options_name) )
+            make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_%d_PATH=%s"%(counter, qgis_options_dir) )
+            
+            qgis_options_dirs_tmp.append(qgis_options_dir)
+        make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_COUNT=%d"%counter )
     
     '''FONTS_DIR'''
     if os.path.exists(ngq_install_fonts_bat):
@@ -172,6 +183,7 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     try:
         print "make_installer_command: ", make_installer_command
         res = subprocess.check_output(make_installer_command)
+        #res = subprocess.check_call(make_installer_command)
         print res
         
         output_desc_line = re.search('Output: ".+"', res).group()
@@ -188,7 +200,8 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     except:
         sys.exit("ERROR! Make installer error: Unexpected error: %s\n"%sys.exc_info()[0])
     
-    shutil.rmtree(qgis_options_dir)
+    for qgis_options_dir in qgis_options_dirs_tmp:
+        shutil.rmtree(qgis_options_dir)
     if run_scripts_dir is not None:
         shutil.rmtree(run_scripts_dir)
     
