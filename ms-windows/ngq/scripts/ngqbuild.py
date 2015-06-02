@@ -86,7 +86,7 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     
     if ngq_customization_conf.has_key(u'prog_name'):
         
-        make_installer_command.append( "/DPROGRAM_NAME=%s"%ngq_customization_conf[u'prog_name'].encode("cp1251") )
+        make_installer_command.append( "/DPROGRAM_NAME=%s"%ngq_customization_conf[u'prog_name'] )
         
         '''QGIS_RUN_SCRIPTS_DIR'''
         run_scripts_dir = prepareRunScripts(default_scripts_dir, ngq_customization_conf[u'prog_name'])
@@ -94,17 +94,17 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
         
         '''NextGIS_QGIS_RUN_LNK_NAME'''
         if ngq_customization_conf.has_key(u'ngq_shortcut_name'):
-            make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_NAME=%s"%ngq_customization_conf[u'ngq_shortcut_name'].encode("cp1251") )
+            make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_NAME=%s"%ngq_customization_conf[u'ngq_shortcut_name'])
         else:
-            make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_NAME=%s"%ngq_customization_conf[u'prog_name'].encode("cp1251") )
+            make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_NAME=%s"%ngq_customization_conf[u'prog_name'] )
             
     if ngq_customization_conf.has_key(u'installer_name'):
-        make_installer_command.append( "/DINSTALLER_NAME=%s"%ngq_customization_conf[u'installer_name'].encode("cp1251") )
+        make_installer_command.append( "/DINSTALLER_NAME=%s"%ngq_customization_conf[u'installer_name'])
     
     '''NextGIS_QGIS_RUN_LNK_ICO_FileName'''
     if ngq_customization_conf.has_key(u'ngq_icon'):
-        make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_ICO_FileName=%s"%ngq_customization_conf[u'ngq_icon'].encode("cp1251") )
-        make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_ICO_Path=%s"%os.path.join(ngq_customization_dir,ngq_customization_conf[u'ngq_icon'].encode("cp1251")) )
+        make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_ICO_FileName=%s"%ngq_customization_conf[u'ngq_icon'] )
+        make_installer_command.append( "/DNextGIS_QGIS_RUN_LNK_ICO_Path=%s"%os.path.join(ngq_customization_dir,ngq_customization_conf[u'ngq_icon']) )
         
     '''/DOSGEO4W_SRC_DIR=%OSGEO_ENV_FOR_INSTALLER%'''
     make_installer_command.append( "/DOSGEO4W_SRC_DIR=%s"%os.getenv("OSGEO_ENV_FOR_INSTALLER", "").strip('"') )
@@ -134,10 +134,11 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     make_installer_command.append( "/DINSTALLER_OUTPUT_DIR=%s"%ngq_installer_dst_dir )
     '''/DDEFAULT_PROJECT=%9 ^'''
     if ngq_customization_conf.has_key(u'def_project'):
-        make_installer_command.append( "/DDEFAULT_PROJECT=%s"%ngq_customization_conf[u'def_project'].encode("cp1251") )
+        make_installer_command.append( "/DDEFAULT_PROJECT=%s"%ngq_customization_conf[u'def_project'] )
     
     '''QGIS_DEFAULT_OPTIONS'''
     #qgis_options_dir = default_qgis_options_dir
+    print "plugins: ", plugins
     qgis_options_dirs_tmp = []
     if ngq_customization_conf.has_key(u'default_qgis_options_dirs'):
         qgis_options_dirs = ngq_customization_conf[u'default_qgis_options_dirs']
@@ -145,12 +146,14 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
         for dir in qgis_options_dirs.items():
             qgis_options_name = dir[0]
             qgis_options_dir = os.path.join(ngq_customization_dir, dir[1])
+            print "qgis_options_dir: ",qgis_options_dir
             qgis_options_dir = prepareQGISSettings(qgis_options_dir, plugins)
             counter +=1
             make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_%d_NAME=%s"%(counter, qgis_options_name) )
             make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_%d_PATH=%s"%(counter, qgis_options_dir) )
             
             qgis_options_dirs_tmp.append(qgis_options_dir)
+        print "qgis_options_dirs_tmp: ", qgis_options_dirs_tmp
         make_installer_command.append( "/DQGIS_DEFAULT_OPTIONS_COUNT=%d"%counter )
     
     '''FONTS_DIR'''
@@ -182,8 +185,10 @@ def MakeInstaller(ngq_build_output_dir, ngq_build_num, ngq_installer_dst_dir, ng
     make_installer_command.append(nsis_script_name)
     try:
         print "make_installer_command: ", make_installer_command
-        res = subprocess.check_output(make_installer_command)
-        #res = subprocess.check_call(make_installer_command)
+        #res = subprocess.check_output(make_installer_command)
+        for i in range(0, len(make_installer_command)):
+            make_installer_command[i] = make_installer_command[i].encode('cp1251')
+        res = subprocess.check_call(make_installer_command)
         print res
         
         output_desc_line = re.search('Output: ".+"', res).group()

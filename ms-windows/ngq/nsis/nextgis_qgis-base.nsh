@@ -43,8 +43,8 @@ ShowUnInstDetails show
 
 ;--------------------------------
 ; Dependence Welcome pages images from language
-!define MUI_PAGE_CUSTOMFUNCTION_PRE wel_pre
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW wel_show
+;!define MUI_PAGE_CUSTOMFUNCTION_PRE wel_pre
+;!define MUI_PAGE_CUSTOMFUNCTION_SHOW wel_show
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "Installer-Files\LICENSE.txt"
@@ -56,8 +56,8 @@ ShowUnInstDetails show
 
 ;--------------------------------
 ; Dependence Welcome pages images from language
-!define MUI_PAGE_CUSTOMFUNCTION_PRE un.wel_pre
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.wel_show
+;!define MUI_PAGE_CUSTOMFUNCTION_PRE un.wel_pre
+;!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.wel_show
 
 !insertmacro MUI_UNPAGE_WELCOME
 !insertmacro MUI_UNPAGE_CONFIRM

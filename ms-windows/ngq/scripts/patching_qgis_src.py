@@ -121,6 +121,10 @@ def patchQGISsrc(qgis_src_dir, settings_dir, configuration):
     """
     ts_dst_filename = os.path.join(qgis_src_dir, 'i18n', 'qgis_ru.ts')
     if configuration.has_key(u'ngq_about_pages'):
+        shutil.copytree(
+            os.path.join(settings_dir, u'about_pages_contents'),
+            os.path.join(qgis_src_dir, u'resources/about_pages_contents'),
+            )
         #page_indexes = configuration[u'ngq_about_pages'].keys()
         page_indexes = range(0, len(configuration[u'ngq_about_pages']))
         #page_indexes.sort()
@@ -136,7 +140,7 @@ def patchQGISsrc(qgis_src_dir, settings_dir, configuration):
                 indexes4add.append(index)
                 names4add.append(page_setting[u'name'][0])
                 files4add.append(page_setting[u'content_file'])
-                putFile(qgis_src_dir, settings_dir, u'about_pages_contents/%s'%page_setting[u'content_file'], "resources/about_pages_contents/%s"%page_setting[u'content_file'])
+                #putFile(qgis_src_dir, settings_dir, u'about_pages_contents/%s'%page_setting[u'content_file'], "resources/about_pages_contents/%s"%page_setting[u'content_file'])
                 addTranslate(page_setting[u'name'][0], page_setting[u'name'][1], "QgsAbout", ts_dst_filename)
         patch_template_filename = os.path.join( patches_templates_dir, "change_about_dialog.patch.template")
         patch_filename = os.path.join(patch_dir, "change_about_dialog.patch")
@@ -148,7 +152,9 @@ def patchQGISsrc(qgis_src_dir, settings_dir, configuration):
             u'LIST_CONTENT_FILENAME_ADD': ",".join(['"%s"'%v for v in files4add])
         }
         processPatchTemplate(vars, patch_template_filename, patch_filename)
-
+        
+        
+        
         if not os.path.exists(patch_filename):
             sys.exit( "ERROR: Patch file (%s) not found"%patch_filename)
         

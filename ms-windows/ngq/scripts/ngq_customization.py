@@ -34,7 +34,7 @@ def prepareQGISSettings(default_settings_dir, plugins):
     
     shutil.copytree(default_settings_dir, settings_dir)
     
-    ini_file = os.path.join(settings_dir, "QGIS", "QGIS2.ini")
+    ini_file = os.path.join(settings_dir, "QGIS2.ini")
     #config = ConfigParser.RawConfigParser()
     #config.read(ini_file)
     config = QSettings(ini_file, QSettings.IniFormat)
