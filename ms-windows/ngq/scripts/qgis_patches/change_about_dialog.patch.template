@@ -2,7 +2,7 @@ diff --git a/src/app/qgsabout.cpp b/src/app/qgsabout.cpp
 index 51ada4b..87f4884 100644
 --- a/src/app/qgsabout.cpp
 +++ b/src/app/qgsabout.cpp
-@@ -62,7 +62,40 @@ void QgsAbout::init()
+@@ -62,7 +62,41 @@ void QgsAbout::init()
      setDevelopersMap();
    else
      mOptionsListWidget->item( DEVELOPERS_MAP_INDEX )->setHidden( true );
@@ -16,6 +16,7 @@ index 51ada4b..87f4884 100644
 +  {
 +      mOptionsListWidget->insertItem(indexes[index], QgsAbout::tr(pages_names[index].toStdString().c_str()) );
 +      QTextBrowser* tb = new QTextBrowser(this);
++      tb->setSearchPaths( QStringList(QgsApplication::aboutPageContentsFilesPath()) );
 +      QString filename = QgsApplication::aboutPageContentsFilesPath() + QString("/") + content_filenames[index];
 +      QFile content_file( filename );
 +      QString content_html = "";
