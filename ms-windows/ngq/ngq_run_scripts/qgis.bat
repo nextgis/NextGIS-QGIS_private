@@ -9,4 +9,4 @@ set VSI_CACHE=TRUE
 set VSI_CACHE_SIZE=1000000
 
 start "Prerun {PROGRAM_NAME}" /B /WAIT "python.exe" "%OSGEO4W_ROOT%"\bin\qgis_preruner.py "%OSGEO4W_ROOT%" "%UserProfile%\NextGIS QGIS"
-start "{PROGRAM_NAME}" /B "%OSGEO4W_ROOT%"\bin\qgis.exe --configpath "%UserProfile%\NextGIS QGIS"
+start "{PROGRAM_NAME}" /B "%OSGEO4W_ROOT%"\bin\qgis.exe --configpath "%UserProfile%\NextGIS QGIS" %*

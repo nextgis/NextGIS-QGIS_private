@@ -4,6 +4,7 @@ RequestExecutionLevel admin
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "utils.nsh"
+!include "FileAssoc.nsh"
 
 Name "${PROGRAM_NAME}"
 OutFile "${OUTPUT_FILE}"
@@ -341,6 +342,10 @@ NoRebootNecessary:
     ${Default}
         CreateShortCut "$SMPROGRAMS\${SMPROGRAMS_FOLDER_NAME_EN}\$(QGIS_MAN).lnk" "$INSTALL_DIR\manual\${QGIS_MANUAL_FILE_NAME_EN}" "" "" "" "" "" "$(QGIS_MAN_HELP)"
     ${EndSwitch}
+    
+    !insertmacro APP_ASSOCIATE "qgs" "ngq.project" "Nextgis QGIS Project" "$INSTALL_DIR\icons\${NextGIS_QGIS_RUN_LNK_ICO_FileName}" "Open with ${PROGRAM_NAME}" \ 
+    "$\"$INSTALL_DIR\bin\nircmd.exe$\" exec hide $\"$INSTALL_DIR\bin\qgis.bat$\" $\"%1$\""
+    !insertmacro UPDATEFILEASSOC
 SectionEnd
 
 ;--------------------------------
@@ -429,6 +434,9 @@ Section "Uninstall"
 
 	DeleteRegKey HKLM "Software\${PROGRAM_NAME}"
 	DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PROGRAM_NAME}"
+    
+    !insertmacro APP_UNASSOCIATE "qgs" "ngq.project"
+    !insertmacro UPDATEFILEASSOC
 SectionEnd
 
 ;--------------------------------
