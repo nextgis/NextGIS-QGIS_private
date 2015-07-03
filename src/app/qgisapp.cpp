@@ -478,7 +478,7 @@ static bool cmpByText_( QAction* a, QAction* b )
 QgisApp *QgisApp::smInstance = 0;
 
 // constructor starts here
-QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, Qt::WindowFlags fl )
+QgisApp::QgisApp( QSplashScreen *splash, const QString& myTranslationCode, bool restorePlugins, QWidget * parent, Qt::WindowFlags fl )
     : QMainWindow( parent, fl )
 #ifdef Q_OS_WIN
     , mSkipNextContextMenuEvent( 0 )
@@ -514,6 +514,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
     , mpTileScaleWidget( 0 )
     , mpGpsWidget( 0 )
     , mSnappingUtils( 0 )
+	, mTranslationCode( myTranslationCode )
+	, mQgistor( 0 )
+	, mQttor( 0 )
 {
   if ( smInstance )
   {
@@ -527,6 +530,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
   smInstance = this;
 
   namSetup();
+	
+  setTranslation();
 
   // load GUI: actions, menus, toolbars
   setupUi( this );
@@ -984,6 +989,70 @@ QgisApp::~QgisApp()
   delete mPythonUtils;
 
   QgsMapLayerStyleGuiUtils::cleanup();
+}
+
+void QgisApp::setTranslation()
+{
+  /* Translation file for QGIS.
+   */
+  QSettings mySettings;
+  QString i18nPath = QgsApplication::i18nPath();
+  QString myUserLocale = mySettings.value( "locale/userLocale", "" ).toString();
+  bool myLocaleOverrideFlag = mySettings.value( "locale/overrideFlag", false ).toBool();
+  QString myLocale;
+  //
+  // Priority of translation is:
+  //  - command line
+  //  - user secified in options dialog (with group checked on)
+  //  - system locale
+  //
+  //  When specifying from the command line it will change the user
+  //  specified user locale
+  //
+  if ( !this->mTranslationCode.isNull() && !this->mTranslationCode.isEmpty() )
+  {
+    mySettings.setValue( "locale/userLocale", this->mTranslationCode );
+  }
+  else
+  {
+    if ( !myLocaleOverrideFlag || myUserLocale.isEmpty() )
+    {
+      this->mTranslationCode = QLocale::system().name();
+      //setting the locale/userLocale when the --lang= option is not set will allow third party
+      //plugins to always use the same locale as the QGIS, otherwise they can be out of sync
+      mySettings.setValue( "locale/userLocale", this->mTranslationCode );
+    }
+    else
+    {
+      this->mTranslationCode = myUserLocale;
+    }
+  }
+
+  if ( this->mTranslationCode != "C" )
+  {
+    if ( mQgistor.load( QString( "qgis_" ) + this->mTranslationCode, i18nPath ) )
+    {
+      QgsApplication::installTranslator( &mQgistor );
+    }
+    else
+    {
+      qWarning( "loading of qgis translation failed [%s]", QString( "%1/qgis_%2" ).arg( i18nPath ).arg( this->mTranslationCode ).toLocal8Bit().constData() );
+    }
+
+    /* Translation file for Qt.
+     * The strings from the QMenuBar context section are used by Qt/Mac to shift
+     * the About, Preferences and Quit items to the Mac Application menu.
+     * These items must be translated identically in both qt_ and qgis_ files.
+     */
+    if ( mQttor.load( QString( "qt_" ) + this->mTranslationCode, QLibraryInfo::location( QLibraryInfo::TranslationsPath ) ) )
+    {
+      QgsApplication::installTranslator( &mQttor );
+    }
+    else
+    {
+      qWarning( "loading of qt translation failed [%s]", QString( "%1/qt_%2" ).arg( QLibraryInfo::location( QLibraryInfo::TranslationsPath ) ).arg( this->mTranslationCode ).toLocal8Bit().constData() );
+    }
+  }
 }
 
 void QgisApp::dragEnterEvent( QDragEnterEvent *event )
@@ -7864,7 +7933,15 @@ void QgisApp::apiDocumentation()
 
 void QgisApp::supportProviders()
 {
-  openURL( "http://nextgis.ru/services/support/", false );
+  if ( !this->mTranslationCode.isNull() && !this->mTranslationCode.isEmpty() )
+  {
+    if (this->mTranslationCode == "ru" || this->mTranslationCode == "ru_RU")
+	{
+		openURL( "http://nextgis.ru/services/support/", false );
+		return;
+	}
+  }
+  openURL( "http://nextgis.ru/en/services/support/", false );
 }
 
 void QgisApp::helpQgisHomePage()

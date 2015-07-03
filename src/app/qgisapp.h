@@ -90,6 +90,7 @@ class QgsTileScaleWidget;
 #include <QAbstractSocket>
 #include <QPointer>
 #include <QSslError>
+#include <QTranslator>
 
 #include "qgsconfig.h"
 #include "qgsfeature.h"
@@ -119,7 +120,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     Q_OBJECT
   public:
     //! Constructor
-    QgisApp( QSplashScreen *splash, bool restorePlugins = true, QWidget *parent = 0, Qt::WindowFlags fl = Qt::Window );
+    QgisApp( QSplashScreen *splash, const QString& myTranslationCode, bool restorePlugins = true, QWidget *parent = 0, Qt::WindowFlags fl = Qt::Window );
     //! Constructor for unit tests
     QgisApp();
     //! Destructor
@@ -1266,6 +1267,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     void layerSavedAs( QgsMapLayer* l, QString path );
 
   private:
+    void setTranslation();
     /** This method will open a dialog so the user can select GDAL sublayers to load
      * @returns true if any items were loaded
      */
@@ -1650,6 +1652,10 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QToolButton* mBtnFilterLegend;
 
     QgsSnappingUtils* mSnappingUtils;
+
+	QString mTranslationCode;
+	QTranslator mQgistor;
+	QTranslator mQttor;
 
 #ifdef HAVE_TOUCH
     bool gestureEvent( QGestureEvent *event );

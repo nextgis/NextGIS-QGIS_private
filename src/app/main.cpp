@@ -787,68 +787,6 @@ int main( int argc, char *argv[] )
 #endif
 #endif
 
-  /* Translation file for QGIS.
-   */
-  QString i18nPath = QgsApplication::i18nPath();
-  QString myUserLocale = mySettings.value( "locale/userLocale", "" ).toString();
-  bool myLocaleOverrideFlag = mySettings.value( "locale/overrideFlag", false ).toBool();
-  QString myLocale;
-  //
-  // Priority of translation is:
-  //  - command line
-  //  - user secified in options dialog (with group checked on)
-  //  - system locale
-  //
-  //  When specifying from the command line it will change the user
-  //  specified user locale
-  //
-  if ( !myTranslationCode.isNull() && !myTranslationCode.isEmpty() )
-  {
-    mySettings.setValue( "locale/userLocale", myTranslationCode );
-  }
-  else
-  {
-    if ( !myLocaleOverrideFlag || myUserLocale.isEmpty() )
-    {
-      myTranslationCode = QLocale::system().name();
-      //setting the locale/userLocale when the --lang= option is not set will allow third party
-      //plugins to always use the same locale as the QGIS, otherwise they can be out of sync
-      mySettings.setValue( "locale/userLocale", myTranslationCode );
-    }
-    else
-    {
-      myTranslationCode = myUserLocale;
-    }
-  }
-
-  QTranslator qgistor( 0 );
-  QTranslator qttor( 0 );
-  if ( myTranslationCode != "C" )
-  {
-    if ( qgistor.load( QString( "qgis_" ) + myTranslationCode, i18nPath ) )
-    {
-      myApp.installTranslator( &qgistor );
-    }
-    else
-    {
-      qWarning( "loading of qgis translation failed [%s]", QString( "%1/qgis_%2" ).arg( i18nPath ).arg( myTranslationCode ).toLocal8Bit().constData() );
-    }
-
-    /* Translation file for Qt.
-     * The strings from the QMenuBar context section are used by Qt/Mac to shift
-     * the About, Preferences and Quit items to the Mac Application menu.
-     * These items must be translated identically in both qt_ and qgis_ files.
-     */
-    if ( qttor.load( QString( "qt_" ) + myTranslationCode, QLibraryInfo::location( QLibraryInfo::TranslationsPath ) ) )
-    {
-      myApp.installTranslator( &qttor );
-    }
-    else
-    {
-      qWarning( "loading of qt translation failed [%s]", QString( "%1/qt_%2" ).arg( QLibraryInfo::location( QLibraryInfo::TranslationsPath ) ).arg( myTranslationCode ).toLocal8Bit().constData() );
-    }
-  }
-
   // For non static builds on mac and win (static builds are not supported)
   // we need to be sure we can find the qt image
   // plugins. In mac be sure to look in the
@@ -907,7 +845,7 @@ int main( int argc, char *argv[] )
   // this should be done in QgsApplication::init() but it doesn't know the settings dir.
   QgsApplication::setMaxThreads( QSettings().value( "/qgis/max_threads", -1 ).toInt() );
 
-  QgisApp *qgis = new QgisApp( mypSplash, myRestorePlugins ); // "QgisApp" used to find canonical instance
+  QgisApp *qgis = new QgisApp( mypSplash, myTranslationCode, myRestorePlugins ); // "QgisApp" used to find canonical instance
   qgis->setObjectName( "QgisApp" );
 
   myApp.connect(
