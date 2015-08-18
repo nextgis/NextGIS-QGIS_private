@@ -173,6 +173,8 @@ SET(QGIS_CORE_SRCS
   qgsvectorlayerundocommand.cpp
   qgsvectorsimplifymethod.cpp
   qgsxmlutils.cpp
+  qgsslconnect.cpp
+  qgslocalec.cpp
 
   composer/qgsaddremoveitemcommand.cpp
   composer/qgsaddremovemultiframecommand.cpp
@@ -551,6 +553,7 @@ SET(QGIS_CORE_HDRS
   qgsvectorlayerundocommand.h
   qgsvectorsimplifymethod.h
   qgsxmlutils.h
+  qgslocalec.h
 
   diagram/qgsdiagram.h
   diagram/qgspiediagram.h

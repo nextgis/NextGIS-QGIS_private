@@ -105,6 +105,7 @@ QgsComposer::QgsComposer( QgisApp *qgis, const QString& title )
     : QMainWindow()
     , mTitle( title )
     , mQgis( qgis )
+    , mPrinter( 0 )
     , mUndoView( 0 )
     , mAtlasFeatureAction( 0 )
 {
@@ -645,6 +646,7 @@ QgsComposer::QgsComposer( QgisApp *qgis, const QString& title )
 QgsComposer::~QgsComposer()
 {
   deleteItemWidgets();
+  delete mPrinter;
 }
 
 void QgsComposer::setupTheme()
@@ -803,24 +805,38 @@ void QgsComposer::activate()
   }
 }
 
-#ifdef Q_OS_MAC
 void QgsComposer::changeEvent( QEvent* event )
 {
   QMainWindow::changeEvent( event );
   switch ( event->type() )
   {
+#ifdef Q_OS_MAC
     case QEvent::ActivationChange:
+    {
       if ( QApplication::activeWindow() == this )
       {
         mWindowAction->setChecked( true );
       }
       break;
-
+    }
+#endif
+    case QEvent::WindowStateChange:
+    {
+      /* Listen out for window un-minimisation and restore composer map states.
+       * We can't use showEvent to detect this due to QT Bug 36675 (see #6085).
+       */
+      QWindowStateChangeEvent* changeEv = static_cast< QWindowStateChangeEvent* >( event );
+      if ( changeEv->oldState() & Qt::WindowMinimized )
+      {
+        // Window restored, restore composers
+        restoreComposerMapStates();
+      }
+      break;
+    }
     default:
       break;
   }
 }
-#endif
 
 void QgsComposer::setTitle( const QString& title )
 {
@@ -1701,7 +1717,7 @@ void QgsComposer::printComposition( QgsComposer::OutputMode mode )
   }
 
   //orientation and page size are already set to QPrinter in the page setup dialog
-  QPrintDialog printDialog( &mPrinter, 0 );
+  QPrintDialog printDialog( printer(), 0 );
   if ( printDialog.exec() != QDialog::Accepted )
   {
     return;
@@ -1713,15 +1729,15 @@ void QgsComposer::printComposition( QgsComposer::OutputMode mode )
   QgsAtlasComposition* atlasMap = &mComposition->atlasComposition();
   if ( mode == QgsComposer::Single )
   {
-    mComposition->print( mPrinter, true );
+    mComposition->print( *printer(), true );
   }
   else
   {
     //prepare for first feature, so that we know paper size to begin with
     atlasMap->prepareForFeature( 0 );
 
-    mComposition->beginPrint( mPrinter, true );
-    QPainter painter( &mPrinter );
+    mComposition->beginPrint( *printer(), true );
+    QPainter painter( printer() );
 
     loadAtlasPredefinedScalesFromProject();
     if ( ! atlasMap->beginRender() && !atlasMap->featureFilterErrorString().isEmpty() )
@@ -1759,7 +1775,7 @@ void QgsComposer::printComposition( QgsComposer::OutputMode mode )
       }
 
       //start print on a new page if we're not on the first feature
-      mComposition->doPrint( mPrinter, painter, i > 0 );
+      mComposition->doPrint( *printer(), painter, i > 0 );
     }
     atlasMap->endRender();
     painter.end();
@@ -3003,21 +3019,16 @@ void QgsComposer::resizeEvent( QResizeEvent *e )
   saveWindowState();
 }
 
+#ifdef Q_OS_MAC
 void QgsComposer::showEvent( QShowEvent* event )
 {
-  if ( event->spontaneous() ) //event from the window system
-  {
-    restoreComposerMapStates();
-  }
-
-#ifdef Q_OS_MAC
   // add to menu if (re)opening window (event not due to unminimize)
   if ( !event->spontaneous() )
   {
     mQgis->addWindow( mWindowAction );
   }
-#endif
 }
+#endif
 
 void QgsComposer::saveWindowState()
 {
@@ -3556,21 +3567,24 @@ void QgsComposer::on_mActionPageSetup_triggered()
     return;
   }
 
-  QPageSetupDialog pageSetupDialog( &mPrinter, this );
+  QPageSetupDialog pageSetupDialog( printer(), this );
   pageSetupDialog.exec();
 }
 
 void QgsComposer::restoreComposerMapStates()
 {
-  //go through maps and restore original preview modes (show on demand after loading from project file)
-  QMap< QgsComposerMap*, int >::iterator mapIt = mMapsToRestore.begin();
-  for ( ; mapIt != mMapsToRestore.end(); ++mapIt )
+  if ( !mMapsToRestore.isEmpty() )
   {
-    mapIt.key()->setPreviewMode(( QgsComposerMap::PreviewMode )( mapIt.value() ) );
-    mapIt.key()->cache();
-    mapIt.key()->update();
+    //go through maps and restore original preview modes (show on demand after loading from project file)
+    QMap< QgsComposerMap*, int >::iterator mapIt = mMapsToRestore.begin();
+    for ( ; mapIt != mMapsToRestore.end(); ++mapIt )
+    {
+      mapIt.key()->setPreviewMode(( QgsComposerMap::PreviewMode )( mapIt.value() ) );
+      mapIt.key()->cache();
+      mapIt.key()->update();
+    }
+    mMapsToRestore.clear();
   }
-  mMapsToRestore.clear();
 }
 
 void QgsComposer::populatePrintComposersMenu()
@@ -3726,11 +3740,11 @@ void QgsComposer::setPrinterPageOrientation( QString orientation )
 {
   if ( orientation == tr( "Landscape" ) )
   {
-    mPrinter.setOrientation( QPrinter::Landscape );
+    printer()->setOrientation( QPrinter::Landscape );
   }
   else
   {
-    mPrinter.setOrientation( QPrinter::Portrait );
+    printer()->setOrientation( QPrinter::Portrait );
   }
 }
 
@@ -3742,11 +3756,11 @@ void QgsComposer::setPrinterPageDefaults()
   //set printer page orientation
   if ( paperWidth > paperHeight )
   {
-    mPrinter.setOrientation( QPrinter::Landscape );
+    printer()->setOrientation( QPrinter::Landscape );
   }
   else
   {
-    mPrinter.setOrientation( QPrinter::Portrait );
+    printer()->setOrientation( QPrinter::Portrait );
   }
 }
 
@@ -3797,5 +3811,15 @@ void QgsComposer::loadAtlasPredefinedScalesFromProject()
     }
   }
   atlasMap.setPredefinedScales( pScales );
+}
+
+QPrinter *QgsComposer::printer()
+{
+  //only create the printer on demand - creating a printer object can be very slow
+  //due to QTBUG-3033
+  if ( !mPrinter )
+    mPrinter = new QPrinter();
+
+  return mPrinter;
 }
 

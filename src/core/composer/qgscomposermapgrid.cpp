@@ -664,7 +664,13 @@ void QgsComposerMapGrid::draw( QPainter* p )
   }
 
   p->restore();
+
   p->setClipping( false );
+#ifdef Q_OS_MAC
+  //QPainter::setClipping(false) seems to be broken on OSX (#12747). So we hack around it by
+  //setting a larger clip rect
+  p->setClipRect( mComposerMap->mapRectFromScene( mComposerMap->sceneBoundingRect() ).adjusted( -10, -10, 10, 10 ) );
+#endif
 
   if ( mGridFrameStyle != QgsComposerMapGrid::NoFrame )
   {
@@ -1638,6 +1644,9 @@ int QgsComposerMapGrid::xGridLinesCRSTransform( const QgsRectangle& bbox, const 
     step = ( maxX + 360.0 - minX ) / 20;
   }
 
+  if ( step == 0 )
+    return 1;
+
   int gridLineCount = 0;
   while ( currentLevel >= bbox.yMinimum() && gridLineCount < MAX_GRID_LINES )
   {
@@ -1700,6 +1709,9 @@ int QgsComposerMapGrid::yGridLinesCRSTransform( const QgsRectangle& bbox, const 
   double minY = bbox.yMinimum();
   double maxY = bbox.yMaximum();
   double step = ( maxY - minY ) / 20;
+
+  if ( step == 0 )
+    return 1;
 
   bool crosses180 = false;
   bool crossed180 = false;
