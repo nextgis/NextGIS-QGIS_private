@@ -1,7 +1,7 @@
 #############################################################
 # NextGIS QGIS settings
 SET(NGQ_VERSION_MAJOR "15")
-SET(NGQ_VERSION_MINOR "4")
+SET(NGQ_VERSION_MINOR "5")
 SET(NGQ_VERSION ${NGQ_VERSION_MAJOR}.${NGQ_VERSION_MINOR})
 
 SET(NGQ_BUILD_TYPE_BUILD "BUILD")
