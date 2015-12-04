@@ -69,6 +69,7 @@ QgsVectorFileWriter::QgsVectorFileWriter(
 )
     : mDS( NULL )
     , mLayer( NULL )
+    , mOgrRef( NULL )
     , mGeom( NULL )
     , mError( NoError )
     , mCodec( 0 )
@@ -258,12 +259,11 @@ QgsVectorFileWriter::QgsVectorFileWriter(
   }
 
   // consider spatial reference system of the layer
-  OGRSpatialReferenceH ogrRef = NULL;
   if ( srs )
   {
     QString srsWkt = srs->toWkt();
     QgsDebugMsg( "WKT to save as is " + srsWkt );
-    ogrRef = OSRNewSpatialReference( srsWkt.toLocal8Bit().data() );
+    mOgrRef = OSRNewSpatialReference( srsWkt.toLocal8Bit().data() );
   }
 
   // datasource created, now create the output layer
@@ -283,7 +283,7 @@ QgsVectorFileWriter::QgsVectorFileWriter(
   // disable encoding conversion of OGR Shapefile layer
   CPLSetConfigOption( "SHAPE_ENCODING", "" );
 
-  mLayer = OGR_DS_CreateLayer( mDS, TO8F( layerName ), ogrRef, wkbType, options );
+  mLayer = OGR_DS_CreateLayer( mDS, TO8F( layerName ), mOgrRef, wkbType, options );
 
   if ( options )
   {
@@ -316,8 +316,6 @@ QgsVectorFileWriter::QgsVectorFileWriter(
         QgsDebugMsg( "Couldn't open file " + layerName + ".qpj" );
       }
     }
-
-    OSRDestroySpatialReference( ogrRef );
   }
 
   if ( mLayer == NULL )
@@ -337,6 +335,7 @@ QgsVectorFileWriter::QgsVectorFileWriter(
 
   mFields = fields;
   mAttrIdxToOgrIdx.clear();
+  QSet<int> existingIdxs;
 
   for ( int fldIdx = 0; fldIdx < fields.count(); ++fldIdx )
   {
@@ -445,7 +444,8 @@ QgsVectorFileWriter::QgsVectorFileWriter(
     OGR_Fld_Destroy( fld );
 
     int ogrIdx = OGR_FD_GetFieldIndex( defn, mCodec->fromUnicode( name ) );
-    if ( ogrIdx < 0 )
+    QgsDebugMsg( QString( "returned field index for %1: %2" ).arg( name ).arg( ogrIdx ) );
+    if ( ogrIdx < 0 || existingIdxs.contains( ogrIdx ) )
     {
 #if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM < 1700
       // if we didn't find our new column, assume it's name was truncated and
@@ -478,6 +478,7 @@ QgsVectorFileWriter::QgsVectorFileWriter(
       }
     }
 
+    existingIdxs.insert( ogrIdx );
     mAttrIdxToOgrIdx.insert( fldIdx, ogrIdx );
   }
 
@@ -1386,7 +1387,7 @@ QMap<QString, QgsVectorFileWriter::MetaData> QgsVectorFileWriter::initMetaData()
 
   layerOptions.insert( "LAUNDER", new BoolOption(
                          QObject::tr( "Controls whether layer and field names will be laundered for easier use "
-                                      "in SQLite. Laundered names will be convered to lower case and some special "
+                                      "in SQLite. Laundered names will be converted to lower case and some special "
                                       "characters(' - #) will be changed to underscores." ),
                          true  // Default value
                        ) );
@@ -1806,6 +1807,11 @@ QgsVectorFileWriter::~QgsVectorFileWriter()
   if ( mDS )
   {
     OGR_DS_Destroy( mDS );
+  }
+
+  if ( mOgrRef )
+  {
+    OSRDestroySpatialReference( mOgrRef );
   }
 }
 
@@ -2594,7 +2600,7 @@ QgsVectorFileWriter::WriterError QgsVectorFileWriter::exportFeaturesSymbolLevels
         if ( !styleString.isEmpty() )
         {
           OGR_F_SetStyleString( ogrFeature, styleString.toLocal8Bit().data() );
-          if ( ! writeFeature( mLayer, ogrFeature ) )
+          if ( !writeFeature( mLayer, ogrFeature ) )
           {
             ++nErrors;
           }

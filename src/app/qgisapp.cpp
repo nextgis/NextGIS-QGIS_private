@@ -871,6 +871,7 @@ QgisApp::QgisApp()
     , mToolPopupOverviews( 0 )
     , mToolPopupDisplay( 0 )
     , mMapCanvas( 0 )
+    , mOverviewCanvas( 0 )
     , mLayerTreeView( 0 )
     , mLayerTreeCanvasBridge( 0 )
     , mMapLayerOrder( 0 )
@@ -2353,25 +2354,33 @@ void QgisApp::createCanvasTools()
 void QgisApp::createOverview()
 {
   // overview canvas
-  QgsMapOverviewCanvas* overviewCanvas = new QgsMapOverviewCanvas( NULL, mMapCanvas );
-  overviewCanvas->setWhatsThis( tr( "Map overview canvas. This canvas can be used to display a locator map that shows the current extent of the map canvas. The current extent is shown as a red rectangle. Any layer on the map can be added to the overview canvas." ) );
+  mOverviewCanvas = new QgsMapOverviewCanvas( NULL, mMapCanvas );
+
+  //set canvas color to default
+  QSettings settings;
+  int red = settings.value( "/qgis/default_canvas_color_red", 255 ).toInt();
+  int green = settings.value( "/qgis/default_canvas_color_green", 255 ).toInt();
+  int blue = settings.value( "/qgis/default_canvas_color_blue", 255 ).toInt();
+  mOverviewCanvas->setBackgroundColor( QColor( red, green, blue ) );
+
+  mOverviewCanvas->setWhatsThis( tr( "Map overview canvas. This canvas can be used to display a locator map that shows the current extent of the map canvas. The current extent is shown as a red rectangle. Any layer on the map can be added to the overview canvas." ) );
 
   QBitmap overviewPanBmp = QBitmap::fromData( QSize( 16, 16 ), pan_bits );
   QBitmap overviewPanBmpMask = QBitmap::fromData( QSize( 16, 16 ), pan_mask_bits );
   mOverviewMapCursor = new QCursor( overviewPanBmp, overviewPanBmpMask, 0, 0 ); //set upper left corner as hot spot - this is better when extent marker is small; hand won't cover the marker
-  overviewCanvas->setCursor( *mOverviewMapCursor );
+  mOverviewCanvas->setCursor( *mOverviewMapCursor );
 //  QVBoxLayout *myOverviewLayout = new QVBoxLayout;
 //  myOverviewLayout->addWidget(overviewCanvas);
 //  overviewFrame->setLayout(myOverviewLayout);
   mOverviewDock = new QDockWidget( tr( "Overview" ), this );
   mOverviewDock->setObjectName( "Overview" );
   mOverviewDock->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
-  mOverviewDock->setWidget( overviewCanvas );
+  mOverviewDock->setWidget( mOverviewCanvas );
   addDockWidget( Qt::LeftDockWidgetArea, mOverviewDock );
   // add to the Panel submenu
   mPanelMenu->addAction( mOverviewDock->toggleViewAction() );
 
-  mMapCanvas->enableOverviewMode( overviewCanvas );
+  mMapCanvas->enableOverviewMode( mOverviewCanvas );
 
   // moved here to set anti aliasing to both map canvas and overview
   QSettings mySettings;
@@ -3709,6 +3718,7 @@ void QgisApp::fileNew( bool thePromptToSaveFlag, bool forceBlank )
   prj->writeEntry( "Gui", "/CanvasColorGreenPart", myGreen );
   prj->writeEntry( "Gui", "/CanvasColorBluePart", myBlue );
   mMapCanvas->setCanvasColor( QColor( myRed, myGreen, myBlue ) );
+  mOverviewCanvas->setBackgroundColor( QColor( myRed, myGreen, myBlue ) );
 
   prj->dirty( false );
 
@@ -4086,7 +4096,14 @@ bool QgisApp::addProject( QString projectFile )
   int  myBlueInt = QgsProject::instance()->readNumEntry( "Gui", "/CanvasColorBluePart", 255 );
   QColor myColor = QColor( myRedInt, myGreenInt, myBlueInt );
   mMapCanvas->setCanvasColor( myColor ); //this is fill color before rendering starts
+  mOverviewCanvas->setBackgroundColor( myColor );
+
   QgsDebugMsg( "Canvas background color restored..." );
+  myRedInt = QgsProject::instance()->readNumEntry( "Gui", "/SelectionColorRedPart", 255 );
+  myGreenInt = QgsProject::instance()->readNumEntry( "Gui", "/SelectionColorGreenPart", 255 );
+  myBlueInt = QgsProject::instance()->readNumEntry( "Gui", "/SelectionColorBluePart", 0 );
+  myColor = QColor( myRedInt, myGreenInt, myBlueInt );
+  mMapCanvas->setSelectionColor( myColor ); //this is selection color before rendering starts
 
   //load project scales
   bool projectScales = QgsProject::instance()->readBoolEntry( "Scales", "/useProjectScales" );
@@ -5961,14 +5978,36 @@ void QgisApp::mergeAttributesOfSelectedFeatures()
 
   vl->beginEditCommand( tr( "Merged feature attributes" ) );
 
-  const QgsAttributes &merged = d.mergedAttributes();
+  QgsAttributes merged = d.mergedAttributes();
+  QSet<int> toSkip = d.skippedAttributeIndexes();
 
-  foreach ( QgsFeatureId fid, vl->selectedFeaturesIds() )
+  bool firstFeature = true;
+  Q_FOREACH ( QgsFeatureId fid, vl->selectedFeaturesIds() )
   {
     for ( int i = 0; i < merged.count(); ++i )
     {
-      vl->changeAttributeValue( fid, i, merged.at( i ) );
+      if ( toSkip.contains( i ) )
+        continue;
+
+      QVariant val = merged.at( i );
+      // convert to destination data type
+      if ( ! vl->pendingFields()[i].convertCompatible( val ) )
+      {
+        if ( firstFeature )
+        {
+          //only warn on first feature
+          messageBar()->pushMessage(
+            tr( "Invalid result" ),
+            tr( "Could not store value '%1' in field of type %2" ).arg( merged.at( i ).toString(), vl->pendingFields()[i].typeName() ),
+            QgsMessageBar::WARNING );
+        }
+      }
+      else
+      {
+        vl->changeAttributeValue( fid, i, val );
+      }
     }
+    firstFeature = false;
   }
 
   vl->endEditCommand();
@@ -6083,7 +6122,22 @@ void QgisApp::mergeSelectedFeatures()
   //create new feature
   QgsFeature newFeature;
   newFeature.setGeometry( unionGeom );
-  newFeature.setAttributes( d.mergedAttributes() );
+
+  QgsAttributes attrs = d.mergedAttributes();
+  for ( int i = 0; i < attrs.count(); ++i )
+  {
+    QVariant val = attrs.at( i );
+    // convert to destination data type
+    if ( ! vl->pendingFields()[i].convertCompatible( val ) )
+    {
+      messageBar()->pushMessage(
+        tr( "Invalid result" ),
+        tr( "Could not store value '%1' in field of type %2" ).arg( attrs.at( i ).toString(), vl->pendingFields()[i].typeName() ),
+        QgsMessageBar::WARNING );
+    }
+    attrs[i] = val;
+  }
+  newFeature.setAttributes( attrs );
 
   QgsFeatureIds::const_iterator feature_it = featureIdsAfter.constBegin();
   for ( ; feature_it != featureIdsAfter.constEnd(); ++feature_it )
@@ -9171,12 +9225,6 @@ void QgisApp::projectProperties()
 
   // Display the modal dialog box.
   pp->exec();
-
-  int  myRedInt = QgsProject::instance()->readNumEntry( "Gui", "/CanvasColorRedPart", 255 );
-  int  myGreenInt = QgsProject::instance()->readNumEntry( "Gui", "/CanvasColorGreenPart", 255 );
-  int  myBlueInt = QgsProject::instance()->readNumEntry( "Gui", "/CanvasColorBluePart", 255 );
-  QColor myColor = QColor( myRedInt, myGreenInt, myBlueInt );
-  mMapCanvas->setCanvasColor( myColor ); // this is fill color before rendering onto canvas
 
   qobject_cast<QgsMeasureTool*>( mMapTools.mMeasureDist )->updateSettings();
   qobject_cast<QgsMeasureTool*>( mMapTools.mMeasureArea )->updateSettings();

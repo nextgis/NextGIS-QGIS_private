@@ -88,7 +88,7 @@ QgsPointDisplacementRendererWidget::QgsPointDisplacementRendererWidget( QgsVecto
   QStringList::const_iterator it = rendererList.constBegin();
   for ( ; it != rendererList.constEnd(); ++it )
   {
-    if ( *it != "pointDisplacement" )
+    if ( *it != "pointDisplacement" && *it != "heatmapRenderer" && *it != "invertedPolygonRenderer" )
     {
       QgsRendererV2AbstractMetadata* m = QgsRendererV2Registry::instance()->rendererMetadata( *it );
       mRendererComboBox->addItem( m->icon(), m->visibleName(), *it );
@@ -97,8 +97,10 @@ QgsPointDisplacementRendererWidget::QgsPointDisplacementRendererWidget( QgsVecto
 
   mCircleColorButton->setColorDialogTitle( tr( "Select color" ) );
   mCircleColorButton->setContext( "symbology" );
+  mCircleColorButton->setAllowAlpha( true );
   mLabelColorButton->setContext( "symbology" );
   mLabelColorButton->setColorDialogTitle( tr( "Select color" ) );
+  mLabelColorButton->setAllowAlpha( true );
 
   mCircleWidthSpinBox->setValue( mRenderer->circleWidth() );
   mCircleColorButton->setColor( mRenderer->circleColor() );

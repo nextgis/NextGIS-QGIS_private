@@ -17,6 +17,7 @@
 
 #include "qgsserverprojectparser.h"
 #include "qgsapplication.h"
+#include "qgsproject.h"
 #include "qgsconfigcache.h"
 #include "qgsconfigparserutils.h"
 #include "qgscrscache.h"
@@ -61,8 +62,8 @@ QgsServerProjectParser::QgsServerProjectParser( QDomDocument* xmlDoc, const QStr
       }
     }
 
-    mRestrictedLayers = findRestrictedLayers();
     mUseLayerIDs = findUseLayerIDs();
+    mRestrictedLayers = findRestrictedLayers();
 
     mCustomLayerOrder.clear();
 
@@ -75,6 +76,12 @@ QgsServerProjectParser::QgsServerProjectParser( QDomDocument* xmlDoc, const QStr
         mCustomLayerOrder << items.item( i ).toElement().text();
       }
     }
+  }
+  // Setting the QgsProject instance fileName
+  // to help converting relative pathes to absolute
+  if ( mProjectPath != "" )
+  {
+    QgsProject::instance()->setFileName( mProjectPath );
   }
 }
 
@@ -169,6 +176,8 @@ QgsMapLayer* QgsServerProjectParser::createLayerFromElement( const QDomElement& 
   QDomElement dataSourceElem = elem.firstChildElement( "datasource" );
   QString uri = dataSourceElem.text();
   QString absoluteUri;
+  // If QgsProject instance fileName is set,
+  // Is converting relative pathes to absolute still relevant ?
   if ( !dataSourceElem.isNull() )
   {
     //convert relative pathes to absolute ones if necessary
@@ -1055,6 +1064,28 @@ QSet<QString> QgsServerProjectParser::findRestrictedLayers() const
         for ( int k = 0; k < sublayerList.size(); ++k )
         {
           restrictedLayerSet.insert( sublayerList.at( k ).toElement().attribute( "name" ) );
+        }
+      }
+    }
+  }
+  
+  // wmsLayerRestrictionValues contains LayerIDs
+  if ( mUseLayerIDs )
+  {
+    QDomNodeList legendLayerList = legendElem.elementsByTagName( "legendlayer" );
+    for ( int i = 0; i < legendLayerList.size(); ++i )
+    {
+      //get name
+      QDomElement layerElem = legendLayerList.at( i ).toElement();
+      QString layerName = layerElem.attribute( "name" );
+      if ( restrictedLayerSet.contains( layerName ) ) //match: add layer id
+      {
+        // get legend layer file element
+        QDomNodeList layerfileList = layerElem.elementsByTagName( "legendlayerfile" );
+        if ( layerfileList.size() > 0 )
+        {
+          // add layer id
+          restrictedLayerSet.insert( layerfileList.at( 0 ).toElement().attribute( "layerid" ) );
         }
       }
     }

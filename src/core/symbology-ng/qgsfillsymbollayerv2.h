@@ -801,8 +801,9 @@ class CORE_EXPORT QgsSVGFillSymbolLayer: public QgsImageFillSymbolLayer
     void setPatternWidth( double width ) { mPatternWidth = width;}
     double patternWidth() const { return mPatternWidth; }
 
-    void setSvgFillColor( const QColor& c ) { mSvgFillColor = c; }
-    QColor svgFillColor() const { return mSvgFillColor; }
+    void setSvgFillColor( const QColor& c ) { setColor( c );  }
+    QColor svgFillColor() const { return color(); }
+
     void setSvgOutlineColor( const QColor& c ) { mSvgOutlineColor = c; }
     QColor svgOutlineColor() const { return mSvgOutlineColor; }
     void setSvgOutlineWidth( double w ) { mSvgOutlineWidth = w; }
@@ -843,7 +844,6 @@ class CORE_EXPORT QgsSVGFillSymbolLayer: public QgsImageFillSymbolLayer
 
     //param(fill), param(outline), param(outline-width) are going
     //to be replaced in memory
-    QColor mSvgFillColor;
     QColor mSvgOutlineColor;
     double mSvgOutlineWidth;
     QgsSymbolV2::OutputUnit mSvgOutlineWidthUnit;

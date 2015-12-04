@@ -49,6 +49,7 @@
 #include "qgscolorschemeregistry.h"
 #include "qgssymbollayerv2utils.h"
 #include "qgscolordialog.h"
+#include "qgsmapoverviewcanvas.h"
 
 //qt includes
 #include <QInputDialog>
@@ -271,7 +272,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas* mapCanvas, QWidget *pa
   mWMSUrlLineEdit->setText( QgsProject::instance()->readEntry( "WMSUrl", "/", "" ) );
   mWMSFees->setText( QgsProject::instance()->readEntry( "WMSFees", "/", "" ) );
   mWMSAccessConstraints->setText( QgsProject::instance()->readEntry( "WMSAccessConstraints", "/", "" ) );
-  mWMSKeywordList->setText( QgsProject::instance()->readListEntry( "WMSKeywordList", "/" ).join( "," ) );
+  mWMSKeywordList->setText( QgsProject::instance()->readListEntry( "WMSKeywordList", "/" ).join( ", " ) );
 
   // WMS GetFeatureInfo precision
   int WMSprecision = QgsProject::instance()->readNumEntry( "WMSPrecision", "/", -1 );
@@ -678,6 +679,8 @@ void QgsProjectProperties::apply()
   QgsProject::instance()->writeEntry( "Gui", "/CanvasColorGreenPart", myColor.green() );
   QgsProject::instance()->writeEntry( "Gui", "/CanvasColorBluePart", myColor.blue() );
   mMapCanvas->setCanvasColor( myColor );
+  QgisApp::instance()->mapOverviewCanvas()->setBackgroundColor( myColor );
+  QgisApp::instance()->mapOverviewCanvas()->refresh();
 
   //save project scales
   QStringList myScales;
@@ -734,7 +737,8 @@ void QgsProjectProperties::apply()
   QStringList keywordStringList = mWMSKeywordList->text().split( "," );
   if ( keywordStringList.size() > 0 )
   {
-    QgsProject::instance()->writeEntry( "WMSKeywordList", "/", mWMSKeywordList->text().split( "," ) );
+    keywordStringList.replaceInStrings( QRegExp( "^\\s+" ), "" ).replaceInStrings( QRegExp( "\\s+$" ), "" );
+    QgsProject::instance()->writeEntry( "WMSKeywordList", "/", keywordStringList );
   }
   else
   {
