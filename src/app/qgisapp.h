@@ -99,6 +99,7 @@ class QgsTileScaleWidget;
 #include <QAbstractSocket>
 #include <QPointer>
 #include <QSslError>
+#include <QTranslator>
 #include <QDateTime>
 
 #include "qgsauthmanager.h"
@@ -134,7 +135,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     Q_OBJECT
   public:
     //! Constructor
-    QgisApp( QSplashScreen *splash, bool restorePlugins = true, bool skipVersionCheck = false, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Window );
+    // QgisApp( QSplashScreen *splash, bool restorePlugins = true, bool skipVersionCheck = false, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Window );
+    QgisApp( QSplashScreen *splash,  const QString& myTranslationCode, bool restorePlugins = true, bool skipVersionCheck = false, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Window );
     //! Constructor for unit tests
     QgisApp();
     //! Destructor
@@ -1330,6 +1332,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     void layerSavedAs( QgsMapLayer* l, const QString& path );
 
   private:
+    void setTranslation();
     /** This method will open a dialog so the user can select GDAL sublayers to load
      * @returns true if any items were loaded
      */
@@ -1353,6 +1356,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
                                            const QString & providerKey, bool guiWarning,
                                            bool guiUpdate );
 
+    QString normalizeGDALSublayerName( const QString uri, const QString sublayer );
     /** Add this file to the recently opened/saved projects list
      *  pass settings by reference since creating more than one
      * instance simultaneously results in data loss.
@@ -1731,6 +1735,11 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QStackedWidget* mCentralContainer;
 
     int mProjOpen;
+
+    QString mTranslationCode;
+    QTranslator mQgistor;
+    QTranslator mQttor;
+
 #ifdef HAVE_TOUCH
     bool gestureEvent( QGestureEvent *event );
     void tapAndHoldTriggered( QTapAndHoldGesture *gesture );

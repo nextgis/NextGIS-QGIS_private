@@ -361,34 +361,35 @@ class QTreeWidgetItem;
   */
 static void setTitleBarText_( QWidget & qgisApp )
 {
-  QString caption = QgisApp::tr( "QGIS " );
+  QString caption = QgisApp::tr( "NextGIS QGIS " );
 
-  if ( QString( QGis::QGIS_VERSION ).endsWith( "Master" ) )
-  {
-    caption += QString( "%1" ).arg( QGis::QGIS_DEV_VERSION );
-  }
-  else
-  {
-    caption += QGis::QGIS_VERSION;
-  }
+  // if ( QString( QGis::QGIS_VERSION ).endsWith( "Master" ) )
+  // {
+  //   caption += QString( "%1" ).arg( QGis::QGIS_DEV_VERSION );
+  // }
+  // else
+  // {
+  //   caption += QGis::QGIS_VERSION;
+  // }
+  caption += NGQ_VERSION;
 
-  if ( QgsProject::instance()->title().isEmpty() )
-  {
-    if ( QgsProject::instance()->fileName().isEmpty() )
-    {
-      // no project title nor file name, so just leave caption with
-      // application name and version
-    }
-    else
-    {
-      QFileInfo projectFileInfo( QgsProject::instance()->fileName() );
-      caption += " - " + projectFileInfo.completeBaseName();
-    }
-  }
-  else
-  {
-    caption += " - " + QgsProject::instance()->title();
-  }
+  // if ( QgsProject::instance()->title().isEmpty() )
+  // {
+  //   if ( QgsProject::instance()->fileName().isEmpty() )
+  //   {
+  //     // no project title nor file name, so just leave caption with
+  //     // application name and version
+  //   }
+  //   else
+  //   {
+  //     QFileInfo projectFileInfo( QgsProject::instance()->fileName() );
+  //     caption += " - " + projectFileInfo.completeBaseName();
+  //   }
+  // }
+  // else
+  // {
+  //   caption += " - " + QgsProject::instance()->title();
+  // }
 
   qgisApp.setWindowTitle( caption );
 } // setTitleBarText_( QWidget * qgisApp )
@@ -531,7 +532,7 @@ static bool cmpByText_( QAction* a, QAction* b )
 QgisApp *QgisApp::smInstance = nullptr;
 
 // constructor starts here
-QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipVersionCheck, QWidget * parent, Qt::WindowFlags fl )
+QgisApp::QgisApp( QSplashScreen *splash, const QString& myTranslationCode, bool restorePlugins, bool skipVersionCheck, QWidget * parent, Qt::WindowFlags fl )
     : QMainWindow( parent, fl )
     , mNonEditMapTool( nullptr )
     , mScaleLabel( nullptr )
@@ -565,6 +566,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipVersionCh
     , mProjectLastModified()
     , mWelcomePage( nullptr )
     , mCentralContainer( nullptr )
+    , mTranslationCode( myTranslationCode )
+    , mQgistor( 0 )
+    , mQttor( 0 )
 {
   if ( smInstance )
   {
@@ -578,6 +582,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipVersionCh
   smInstance = this;
 
   namSetup();
+
+  setTranslation();
 
   // load GUI: actions, menus, toolbars
   setupUi( this );
@@ -790,7 +796,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipVersionCh
   connect( QgsMapLayerActionRegistry::instance(), SIGNAL( changed() ), this, SLOT( refreshActionFeatureAction() ) );
 
   // set application's caption
-  QString caption = tr( "QGIS - %1 ('%2')" ).arg( QGis::QGIS_VERSION, QGis::QGIS_RELEASE_NAME );
+  // QString caption = tr( "QGIS - %1 ('%2')" ).arg( QGis::QGIS_VERSION, QGis::QGIS_RELEASE_NAME );
+  QString caption = tr( "NextGIS QGIS - %1" ).arg( NGQ_VERSION );
   setWindowTitle( caption );
 
   QgsMessageLog::logMessage( tr( "QGIS starting..." ), QString::null, QgsMessageLog::INFO );
@@ -1126,6 +1133,70 @@ QgisApp::~QgisApp()
   delete QgsProject::instance();
 
   delete mPythonUtils;
+}
+
+void QgisApp::setTranslation()
+{
+  /* Translation file for QGIS.
+   */
+  QSettings mySettings;
+  QString i18nPath = QgsApplication::i18nPath();
+  QString myUserLocale = mySettings.value( "locale/userLocale", "" ).toString();
+  bool myLocaleOverrideFlag = mySettings.value( "locale/overrideFlag", false ).toBool();
+  QString myLocale;
+  //
+  // Priority of translation is:
+  //  - command line
+  //  - user secified in options dialog (with group checked on)
+  //  - system locale
+  //
+  //  When specifying from the command line it will change the user
+  //  specified user locale
+  //
+  if ( !this->mTranslationCode.isNull() && !this->mTranslationCode.isEmpty() )
+  {
+    mySettings.setValue( "locale/userLocale", this->mTranslationCode );
+  }
+  else
+  {
+    if ( !myLocaleOverrideFlag || myUserLocale.isEmpty() )
+    {
+      this->mTranslationCode = QLocale::system().name();
+      //setting the locale/userLocale when the --lang= option is not set will allow third party
+      //plugins to always use the same locale as the QGIS, otherwise they can be out of sync
+      mySettings.setValue( "locale/userLocale", this->mTranslationCode );
+    }
+    else
+    {
+      this->mTranslationCode = myUserLocale;
+    }
+  }
+
+  if ( this->mTranslationCode != "C" )
+  {
+    if ( mQgistor.load( QString( "qgis_" ) + this->mTranslationCode, i18nPath ) )
+    {
+      QgsApplication::installTranslator( &mQgistor );
+    }
+    else
+    {
+      qWarning( "loading of qgis translation failed [%s]", QString( "%1/qgis_%2" ).arg( i18nPath ).arg( this->mTranslationCode ).toLocal8Bit().constData() );
+    }
+
+    /* Translation file for Qt.
+     * The strings from the QMenuBar context section are used by Qt/Mac to shift
+     * the About, Preferences and Quit items to the Mac Application menu.
+     * These items must be translated identically in both qt_ and qgis_ files.
+     */
+    if ( mQttor.load( QString( "qt_" ) + this->mTranslationCode, QLibraryInfo::location( QLibraryInfo::TranslationsPath ) ) )
+    {
+      QgsApplication::installTranslator( &mQttor );
+    }
+    else
+    {
+      qWarning( "loading of qt translation failed [%s]", QString( "%1/qt_%2" ).arg( QLibraryInfo::location( QLibraryInfo::TranslationsPath ) ).arg( this->mTranslationCode ).toLocal8Bit().constData() );
+    }
+  }
 }
 
 void QgisApp::dragEnterEvent( QDragEnterEvent *event )
@@ -2254,7 +2325,7 @@ void QgisApp::setTheme( const QString& theThemeName )
   mActionDecreaseContrast->setIcon( QgsApplication::getThemeIcon( "/mActionDecreaseContrast.svg" ) );
   mActionZoomActualSize->setIcon( QgsApplication::getThemeIcon( "/mActionZoomNative.png" ) );
   mActionQgisHomePage->setIcon( QgsApplication::getThemeIcon( "/mActionQgisHomePage.png" ) );
-  mActionAbout->setIcon( QgsApplication::getThemeIcon( "/mActionHelpAbout.png" ) );
+  mActionAbout->setIcon( QgsApplication::getThemeIcon( "/mActionHelpAbout.svg" ) );
   mActionSponsors->setIcon( QgsApplication::getThemeIcon( "/mActionHelpSponsors.png" ) );
   mActionDraw->setIcon( QgsApplication::getThemeIcon( "/mActionDraw.svg" ) );
   mActionToggleEditing->setIcon( QgsApplication::getThemeIcon( "/mActionToggleEditing.svg" ) );
@@ -3463,36 +3534,40 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
 
   QStringList layers;
   QStringList names;
+  QString name;
+  QString path = layer->source();
+  QString fileName = QFileInfo( path ).completeBaseName();
   for ( int i = 0; i < sublayers.size(); i++ )
   {
-    // simplify raster sublayer name - should add a function in gdal provider for this?
-    // code is copied from QgsGdalLayerItem::createChildren
-    QString name = sublayers[i];
-    QString path = layer->source();
-    // if netcdf/hdf use all text after filename
-    // for hdf4 it would be best to get description, because the subdataset_index is not very practical
-    if ( name.startsWith( "netcdf", Qt::CaseInsensitive ) ||
-         name.startsWith( "hdf", Qt::CaseInsensitive ) )
-      name = name.mid( name.indexOf( path ) + path.length() + 1 );
-    else
-    {
-      // remove driver name and file name
-      name.remove( name.split( ':' )[0] );
-      name.remove( path );
-    }
-    // remove any : or " left over
-    if ( name.startsWith( ':' ) )
-      name.remove( 0, 1 );
+    // // simplify raster sublayer name - should add a function in gdal provider for this?
+    // // code is copied from QgsGdalLayerItem::createChildren
+    // QString name = sublayers[i];
+    // QString path = layer->source();
+    // // if netcdf/hdf use all text after filename
+    // // for hdf4 it would be best to get description, because the subdataset_index is not very practical
+    // if ( name.startsWith( "netcdf", Qt::CaseInsensitive ) ||
+    //      name.startsWith( "hdf", Qt::CaseInsensitive ) )
+    //   name = name.mid( name.indexOf( path ) + path.length() + 1 );
+    // else
+    // {
+    //   // remove driver name and file name
+    //   name.remove( name.split( ':' )[0] );
+    //   name.remove( path );
+    // }
+    // // remove any : or " left over
+    // if ( name.startsWith( ':' ) )
+    //   name.remove( 0, 1 );
 
-    if ( name.startsWith( '\"' ) )
-      name.remove( 0, 1 );
+    // if ( name.startsWith( '\"' ) )
+    //   name.remove( 0, 1 );
 
-    if ( name.endsWith( ':' ) )
-      name.chop( 1 );
+    // if ( name.endsWith( ':' ) )
+    //   name.chop( 1 );
 
-    if ( name.endsWith( '\"' ) )
-      name.chop( 1 );
+    // if ( name.endsWith( '\"' ) )
+    //   name.chop( 1 );
 
+    name = normalizeGDALSublayerName( path, sublayers[i] );
     names << name;
     layers << QString( "%1|%2" ).arg( i ).arg( name );
   }
@@ -3518,7 +3593,8 @@ void QgisApp::askUserForGDALSublayers( QgsRasterLayer *layer )
         name = names[i];
       }
 
-      QgsRasterLayer *rlayer = new QgsRasterLayer( sublayers[i], name );
+      // QgsRasterLayer *rlayer = new QgsRasterLayer( sublayers[i], name );
+      QgsRasterLayer *rlayer = new QgsRasterLayer( sublayers[i], QString( "%1 (%2)" ).arg( fileName ).arg( names[i] ) );
       if ( rlayer && rlayer->isValid() )
       {
         addRasterLayer( rlayer );
@@ -3551,13 +3627,15 @@ void QgisApp::loadGDALSublayers( const QString& uri, const QStringList& list )
   QString path, name;
   QgsRasterLayer *subLayer = nullptr;
 
+  QString fileName = QFileInfo( uri ).completeBaseName();
   //add layers in reverse order so they appear in the right order in the layer dock
   for ( int i = list.size() - 1; i >= 0 ; i-- )
   {
     path = list[i];
-    // shorten name by replacing complete path with filename
-    name = path;
-    name.replace( uri, QFileInfo( uri ).completeBaseName() );
+    // // shorten name by replacing complete path with filename
+    // name = path;
+    // name.replace( uri, QFileInfo( uri ).completeBaseName() );
+    name = QString( "%1 (%2)" ).arg( fileName ).arg( normalizeGDALSublayerName( uri, path ) );
     subLayer = new QgsRasterLayer( path, name );
     if ( subLayer )
     {
@@ -3568,6 +3646,38 @@ void QgisApp::loadGDALSublayers( const QString& uri, const QStringList& list )
     }
 
   }
+}
+
+QString QgisApp::normalizeGDALSublayerName( const QString uri, const QString sublayer )
+{
+  // simplify raster sublayer name - should add a function in gdal provider for this?
+  // code is copied from QgsGdalLayerItem::createChildren
+  QString name = sublayer;
+  // if netcdf/hdf use all text after filename
+  // for hdf4 it would be best to get description, because the subdataset_index is not very practical
+  if ( name.startsWith( "netcdf", Qt::CaseInsensitive ) ||
+       name.startsWith( "hdf", Qt::CaseInsensitive ) )
+    name = name.mid( name.indexOf( uri ) + uri.length() + 1 );
+  else
+  {
+    // remove driver name and file name
+    name.replace( name.split( ":" )[0], "" );
+    name.replace( uri, "" );
+  }
+  // remove any : or " left over
+  if ( name.startsWith( ":" ) )
+    name.remove( 0, 1 );
+
+  if ( name.startsWith( "\"" ) )
+    name.remove( 0, 1 );
+
+  if ( name.endsWith( ":" ) )
+    name.chop( 1 );
+
+  if ( name.endsWith( "\"" ) )
+    name.chop( 1 );
+
+  return name;
 }
 
 // This method is the method that does the real job. If the layer given in
@@ -3616,7 +3726,8 @@ void QgisApp::loadOGRSublayers( const QString& layertype, const QString& uri, co
 {
   // The uri must contain the actual uri of the vectorLayer from which we are
   // going to load the sublayers.
-  QString fileName = QFileInfo( uri ).baseName();
+  // QString fileName = QFileInfo( uri ).baseName();
+  QString fileName = QFileInfo( uri ).completeBaseName();
   QList<QgsMapLayer *> myList;
   for ( int i = 0; i < list.size(); i++ )
   {
@@ -3653,7 +3764,8 @@ void QgisApp::loadOGRSublayers( const QString& layertype, const QString& uri, co
     // addVectorLayer( composedURI, list.at( i ), "ogr" );
 
     QgsDebugMsg( "Creating new vector layer using " + composedURI );
-    QString name = list.at( i );
+    // QString name = list.at( i );
+    QString name = QString( "%1 (%2)" ).arg( fileName ).arg( list.at( i ) );
     name.replace( ':', ' ' );
     QgsVectorLayer *layer = new QgsVectorLayer( composedURI, fileName + " " + name, "ogr", false );
     if ( layer && layer->isValid() )
@@ -8534,7 +8646,16 @@ void QgisApp::reportaBug()
 }
 void QgisApp::supportProviders()
 {
-  openURL( tr( "https://qgis.org/en/site/forusers/commercial_support.html" ), false );
+  // openURL( tr( "https://qgis.org/en/site/forusers/commercial_support.html" ), false );
+  if ( !this->mTranslationCode.isNull() && !this->mTranslationCode.isEmpty() )
+  {
+    if (this->mTranslationCode == "ru" || this->mTranslationCode == "ru_RU")
+    {
+      openURL( "http://nextgis.ru/services/support/", false );
+      return;
+    }
+  }
+  openURL( "http://nextgis.ru/en/services/support/", false );
 }
 
 void QgisApp::helpQgisHomePage()

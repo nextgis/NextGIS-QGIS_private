@@ -1,0 +1,3 @@
+[submodule "src/plugins/dtclassifier"]
+	path = src/plugins/dtclassifier
+	url = https://github.com/nextgis/dtclassifier.git

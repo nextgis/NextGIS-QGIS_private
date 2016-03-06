@@ -205,6 +205,8 @@ void QgsAbout::init()
   }
   setWhatsNew();
   setLicence();
+
+  lNGQVersion->setText(NGQ_VERSION);
 }
 
 void QgsAbout::setLicence()

@@ -238,6 +238,12 @@ int QgsVectorDataProvider::fieldNameIndex( const QString& fieldName ) const
   return -1;
 }
 
+QString QgsVectorDataProvider::idFromFid( const int fid ) const
+{
+  Q_UNUSED( fid );
+  return "";
+}
+
 QMap<QString, int> QgsVectorDataProvider::fieldNameMap() const
 {
   QMap<QString, int> resultMap;
