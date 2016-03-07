@@ -21,7 +21,7 @@ ADD_SUBDIRECTORY(offline_editing)
 ADD_SUBDIRECTORY(heatmap)
 ADD_SUBDIRECTORY(geometry_checker)
 ADD_SUBDIRECTORY(geometry_snapper)
-ADD_SUBDIRECTORY(dtclassifier)
+# ADD_SUBDIRECTORY(dtclassifier)
 
 IF (GRASS_FOUND)
   ADD_SUBDIRECTORY(grass)
