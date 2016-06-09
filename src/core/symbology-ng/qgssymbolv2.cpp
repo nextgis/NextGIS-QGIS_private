@@ -758,7 +758,7 @@ void QgsSymbolV2::renderFeature( const QgsFeature& feature, QgsRenderContext& co
         //draw debugging rect
         context.painter()->setPen( Qt::red );
         context.painter()->setBrush( QColor( 255, 0, 0, 100 ) );
-        context.painter()->drawRect( static_cast<QgsMarkerSymbolV2*>( this )->bounds( pt, context ) );
+        context.painter()->drawRect( static_cast<QgsMarkerSymbolV2*>( this )->bounds( pt, context, feature ) );
       }
     }
     break;
@@ -934,7 +934,8 @@ void QgsSymbolV2::renderFeature( const QgsFeature& feature, QgsRenderContext& co
     delete segmentizedGeometry;
   }
 
-  context.expressionContext().popScope();
+  if ( mSymbolRenderContext->expressionContextScope() )
+    context.expressionContext().popScope();
 }
 
 QgsSymbolV2RenderContext* QgsSymbolV2::symbolRenderContext()
@@ -1189,6 +1190,67 @@ double QgsMarkerSymbolV2::size() const
   return maxSize;
 }
 
+void QgsMarkerSymbolV2::setSizeUnit( QgsSymbolV2::OutputUnit unit )
+{
+  Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )
+  {
+    if ( layer->type() !=  QgsSymbolV2::Marker )
+      continue;
+
+    QgsMarkerSymbolLayerV2* markerLayer = static_cast<QgsMarkerSymbolLayerV2*>( layer );
+    markerLayer->setSizeUnit( unit );
+  }
+}
+
+QgsSymbolV2::OutputUnit QgsMarkerSymbolV2::sizeUnit() const
+{
+  bool first = true;
+  OutputUnit unit = Mixed;
+
+  Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )
+  {
+    if ( layer->type() !=  QgsSymbolV2::Marker )
+      continue;
+    const QgsMarkerSymbolLayerV2* markerLayer = static_cast<const QgsMarkerSymbolLayerV2*>( layer );
+
+    if ( first )
+      unit = markerLayer->sizeUnit();
+    else
+    {
+      if ( unit != markerLayer->sizeUnit() )
+        return Mixed;
+    }
+
+    first = false;
+  }
+  return unit;
+}
+
+void QgsMarkerSymbolV2::setSizeMapUnitScale( const QgsMapUnitScale &scale )
+{
+  Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )
+  {
+    if ( layer->type() !=  QgsSymbolV2::Marker )
+      continue;
+
+    QgsMarkerSymbolLayerV2* markerLayer = static_cast<QgsMarkerSymbolLayerV2*>( layer );
+    markerLayer->setSizeMapUnitScale( scale );
+  }
+}
+
+QgsMapUnitScale QgsMarkerSymbolV2::sizeMapUnitScale() const
+{
+  Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )
+  {
+    if ( layer->type() !=  QgsSymbolV2::Marker )
+      continue;
+
+    QgsMarkerSymbolLayerV2* markerLayer = static_cast<QgsMarkerSymbolLayerV2*>( layer );
+    return markerLayer->sizeMapUnitScale();
+  }
+  return QgsMapUnitScale();
+}
+
 void QgsMarkerSymbolV2::setDataDefinedSize( const QgsDataDefined &dd )
 {
   const double symbolSize = size();
@@ -1360,9 +1422,9 @@ void QgsMarkerSymbolV2::renderPoint( QPointF point, const QgsFeature* f, QgsRend
   }
 }
 
-QRectF QgsMarkerSymbolV2::bounds( QPointF point, QgsRenderContext& context ) const
+QRectF QgsMarkerSymbolV2::bounds( QPointF point, QgsRenderContext& context, const QgsFeature& feature ) const
 {
-  QgsSymbolV2RenderContext symbolContext( context, outputUnit(), mAlpha, false, mRenderHints, nullptr, nullptr, mapUnitScale() );
+  QgsSymbolV2RenderContext symbolContext( context, outputUnit(), mAlpha, false, mRenderHints, &feature, feature.fields(), mapUnitScale() );
 
   QRectF bound;
   Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )

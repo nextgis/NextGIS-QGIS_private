@@ -60,21 +60,21 @@ class QgsNetworkAccessManager : QNetworkAccessManager
     //! Setup the NAM according to the user's settings
     void setupDefaultProxyAndCache();
 
+    //! return whether the system proxy should be used
     bool useSystemProxy();
 
   public slots:
     /** Send GET request, calls get().
      * Emits requestSent().
      * @param request request to be sent
+     * @deprecated use get() directly
      */
-    void sendGet( const QNetworkRequest & request );
-    /** Abort and delete reply. This slot may be used to abort reply created by instance of this class
-     * (and which was not moved to another thread) from a different thread. Such reply cannot
-     * be aborted directly from a different thread. The reply must be also deleted
-     * in this slot, otherwise it could happen that abort signal comes after the reply was deleted.
+    void sendGet( const QNetworkRequest & request ) /Deprecated/;
+    /** Abort and delete reply.
      * @param reply reply to be aborted.
+     * @deprecated use abort() and deleteLayer() on the reply directly
      */
-    void deleteReply( QNetworkReply * reply );
+    void deleteReply( QNetworkReply * reply ) /Deprecated/;
 
   signals:
     void requestAboutToBeCreated( QNetworkAccessManager::Operation, const QNetworkRequest &, QIODevice * );
@@ -83,6 +83,7 @@ class QgsNetworkAccessManager : QNetworkAccessManager
     /** Emitted when request was sent by request()
      * @param reply request reply
      * @param sender the object which called request() slot.
+     * @deprecated only emitted from deprecated sendGet
      */
     void requestSent( QNetworkReply * reply, QObject *sender );
 

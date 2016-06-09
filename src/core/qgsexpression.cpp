@@ -21,6 +21,7 @@
 #include <QRegExp>
 #include <QColor>
 #include <QUuid>
+#include <QMutex>
 
 #include <math.h>
 #include <limits>
@@ -1597,17 +1598,22 @@ static QVariant pointAt( const QVariantList& values, const QgsExpressionContext*
 {
   FEAT_FROM_CONTEXT( context, f );
   int idx = getIntValue( values.at( 0 ), parent );
-  ENSURE_GEOM_TYPE( f, g, QGis::Line );
-  QgsPolyline polyline = g->asPolyline();
-  if ( idx < 0 )
-    idx += polyline.count();
+  const QgsGeometry* g = f.constGeometry();
+  if ( !g || g->isEmpty() )
+    return QVariant();
 
-  if ( idx < 0 || idx >= polyline.count() )
+  if ( idx < 0 )
+  {
+    idx += g->geometry()->nCoordinates();
+  }
+  if ( idx < 0 || idx >= g->geometry()->nCoordinates() )
   {
     parent->setEvalErrorString( QObject::tr( "Index is out of range" ) );
     return QVariant();
   }
-  return QVariant( QPointF( polyline[idx].x(), polyline[idx].y() ) );
+
+  QgsPoint p = g->vertexAt( idx );
+  return QVariant( QPointF( p.x(), p.y() ) );
 }
 
 static QVariant fcnXat( const QVariantList& values, const QgsExpressionContext* f, QgsExpression* parent )
@@ -2852,6 +2858,13 @@ QList<QgsExpression::Function*> QgsExpression::gmOwnedFunctions;
 
 const QList<QgsExpression::Function*>& QgsExpression::Functions()
 {
+  // The construction of the list isn't thread-safe, and without the mutex,
+  // crashes in the WFS provider may occur, since it can parse expressions
+  // in parallel.
+  // The mutex needs to be recursive.
+  static QMutex sFunctionsMutex( QMutex::Recursive );
+  QMutexLocker locker( &sFunctionsMutex );
+
   if ( gmFunctions.isEmpty() )
   {
     gmFunctions
@@ -4249,11 +4262,23 @@ QgsExpression::Node*QgsExpression::NodeLiteral::clone() const
 QVariant QgsExpression::NodeColumnRef::eval( QgsExpression *parent, const QgsExpressionContext *context )
 {
   Q_UNUSED( parent );
+  int index = mIndex;
+
+  if ( index < 0 )
+  {
+    // have not yet found field index - first check explicitly set fields collection
+    if ( context && context->hasVariable( QgsExpressionContext::EXPR_FIELDS ) )
+    {
+      QgsFields fields = qvariant_cast<QgsFields>( context->variable( QgsExpressionContext::EXPR_FIELDS ) );
+      index = fields.fieldNameIndex( mName );
+    }
+  }
+
   if ( context && context->hasVariable( QgsExpressionContext::EXPR_FEATURE ) )
   {
     QgsFeature feature = qvariant_cast<QgsFeature>( context->variable( QgsExpressionContext::EXPR_FEATURE ) );
-    if ( mIndex >= 0 )
-      return feature.attribute( mIndex );
+    if ( index >= 0 )
+      return feature.attribute( index );
     else
       return feature.attribute( mName );
   }

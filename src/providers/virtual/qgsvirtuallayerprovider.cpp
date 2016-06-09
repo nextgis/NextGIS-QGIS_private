@@ -237,7 +237,7 @@ bool QgsVirtualLayerProvider::createIt()
           continue;
 
         const QgsVectorLayer* vl = static_cast<const QgsVectorLayer*>( l );
-        if (( vl->name() == tname ) || ( vl->id() == tname ) )
+        if (( vl->name() == tname ) || ( vl->name().toLower() == tname.toLower() ) || ( vl->id() == tname ) )
         {
           mDefinition.addSource( tname, vl->id() );
           found = true;
@@ -493,6 +493,7 @@ QString QgsVirtualLayerProvider::subsetString()
 bool QgsVirtualLayerProvider::setSubsetString( const QString& subset, bool updateFeatureCount )
 {
   mSubset = subset;
+  mCacheMinMaxDirty = true;
   if ( updateFeatureCount )
     updateStatistics();
   return true;

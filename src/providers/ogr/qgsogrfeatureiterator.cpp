@@ -43,7 +43,7 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource* source, bool 
 {
   mFeatureFetched = false;
 
-  mConn = QgsOgrConnPool::instance()->acquireConnection( mSource->mFilePath );
+  mConn = QgsOgrConnPool::instance()->acquireConnection( mSource->mProvider->dataSourceUri() );
 
   if ( mSource->mLayerName.isNull() )
   {
@@ -62,6 +62,22 @@ QgsOgrFeatureIterator::QgsOgrFeatureIterator( QgsOgrFeatureSource* source, bool 
 
   mFetchGeometry = ( !mRequest.filterRect().isNull() ) || !( mRequest.flags() & QgsFeatureRequest::NoGeometry );
   QgsAttributeList attrs = ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes ) ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList();
+
+  // ensure that all attributes required for expression filter are being fetched
+  if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes && request.filterType() == QgsFeatureRequest::FilterExpression )
+  {
+    Q_FOREACH ( const QString& field, request.filterExpression()->referencedColumns() )
+    {
+      int attrIdx = mSource->mFields.fieldNameIndex( field );
+      if ( !attrs.contains( attrIdx ) )
+        attrs << attrIdx;
+    }
+    mRequest.setSubsetOfAttributes( attrs );
+  }
+  if ( request.filterType() == QgsFeatureRequest::FilterExpression && request.filterExpression()->needsGeometry() )
+  {
+    mFetchGeometry = true;
+  }
 
   // make sure we fetch just relevant fields
   // unless it's a VRT data source filtered by geometry as we don't know which
@@ -214,13 +230,14 @@ bool QgsOgrFeatureIterator::fetchFeature( QgsFeature& feature )
   {
     if ( !readFeature( fet, feature ) )
       continue;
+    else
+      OGR_F_Destroy( fet );
 
     if ( !mRequest.filterRect().isNull() && !feature.constGeometry() )
       continue;
 
     // we have a feature, end this cycle
     feature.setValid( true );
-    OGR_F_Destroy( fet );
     return true;
 
   } // while
@@ -396,7 +413,7 @@ bool QgsOgrFeatureIterator::readFeature( OGRFeatureH fet, QgsFeature& feature )
 QgsOgrFeatureSource::QgsOgrFeatureSource( const QgsOgrProvider* p )
     : mProvider( p )
 {
-  mFilePath = p->filePath();
+  mDataSource = p->dataSourceUri();
   mLayerName = p->layerName();
   mLayerIndex = p->layerIndex();
   mSubsetString = p->mSubsetString;
@@ -404,12 +421,12 @@ QgsOgrFeatureSource::QgsOgrFeatureSource( const QgsOgrProvider* p )
   mFields = p->mAttributeFields;
   mDriverName = p->ogrDriverName;
   mOgrGeometryTypeFilter = wkbFlatten( p->mOgrGeometryTypeFilter );
-  QgsOgrConnPool::instance()->ref( mFilePath );
+  QgsOgrConnPool::instance()->ref( mDataSource );
 }
 
 QgsOgrFeatureSource::~QgsOgrFeatureSource()
 {
-  QgsOgrConnPool::instance()->unref( mFilePath );
+  QgsOgrConnPool::instance()->unref( mDataSource );
 }
 
 QgsFeatureIterator QgsOgrFeatureSource::getFeatures( const QgsFeatureRequest& request )

@@ -674,6 +674,12 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
     }
   }
 
+  // for views try to get the primary key from the meta table
+  if ( mViewBased && mPrimaryKey.isEmpty() )
+  {
+    determineViewPrimaryKey();
+  }
+
   updatePrimaryKeyCapabilities();
 
   sqlite3_free_table( results );
@@ -798,25 +804,8 @@ void QgsSpatiaLiteProvider::loadFields()
     // for views try to get the primary key from the meta table
     if ( mViewBased && mPrimaryKey.isEmpty() )
     {
-      QString sql = QString( "SELECT view_rowid"
-                             " FROM views_geometry_columns"
-                             " WHERE upper(view_name) = upper(%1) and upper(view_geometry) = upper(%2)" ).arg( quotedValue( mTableName ),
-                                 quotedValue( mGeometryColumn ) );
-
-      ret = sqlite3_get_table( sqliteHandle, sql.toUtf8().constData(), &results, &rows, &columns, &errMsg );
-      if ( ret == SQLITE_OK )
-      {
-        if ( rows > 0 )
-        {
-          mPrimaryKey = results[1 * columns];
-          int idx = attributeFields.fieldNameIndex( mPrimaryKey );
-          if ( idx != -1 )
-            mPrimaryKeyAttrs << idx;
-        }
-        sqlite3_free_table( results );
-      }
+      determineViewPrimaryKey();
     }
-
 
   }
   else
@@ -905,6 +894,33 @@ error:
     sqlite3_free( errMsg );
   }
 }
+
+
+void QgsSpatiaLiteProvider::determineViewPrimaryKey()
+{
+  QString sql = QString( "SELECT view_rowid"
+                         " FROM views_geometry_columns"
+                         " WHERE upper(view_name) = upper(%1) and upper(view_geometry) = upper(%2)" ).arg( quotedValue( mTableName ),
+                             quotedValue( mGeometryColumn ) );
+
+  char **results;
+  int rows;
+  int columns;
+  char *errMsg = nullptr;
+  int ret = sqlite3_get_table( sqliteHandle, sql.toUtf8().constData(), &results, &rows, &columns, &errMsg );
+  if ( ret == SQLITE_OK )
+  {
+    if ( rows > 0 )
+    {
+      mPrimaryKey = results[1 * columns];
+      int idx = attributeFields.fieldNameIndex( mPrimaryKey );
+      if ( idx != -1 )
+        mPrimaryKeyAttrs << idx;
+    }
+    sqlite3_free_table( results );
+  }
+}
+
 
 bool QgsSpatiaLiteProvider::hasTriggers()
 {
@@ -3578,6 +3594,11 @@ QString QgsSpatiaLiteProvider::geomParam() const
   return geometry;
 }
 
+static void deleteWkbBlob( void* wkbBlob )
+{
+  delete[]( char* )wkbBlob;
+}
+
 bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList & flist )
 {
   sqlite3_stmt *stmt = nullptr;
@@ -3661,7 +3682,7 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList & flist )
             if ( !wkb )
               sqlite3_bind_null( stmt, ++ia );
             else
-              sqlite3_bind_blob( stmt, ++ia, wkb, wkb_size, free );
+              sqlite3_bind_blob( stmt, ++ia, wkb, wkb_size, deleteWkbBlob );
           }
         }
 
@@ -3732,6 +3753,9 @@ bool QgsSpatiaLiteProvider::addFeatures( QgsFeatureList & flist )
           break;
         }
       }
+
+      sqlite3_finalize( stmt );
+
       if ( ret == SQLITE_DONE || ret == SQLITE_ROW )
       {
         ret = sqlite3_exec( sqliteHandle, "COMMIT", nullptr, nullptr, &errMsg );
@@ -4051,7 +4075,7 @@ bool QgsSpatiaLiteProvider::changeGeometryValues( const QgsGeometryMap &geometry
     if ( !wkb )
       sqlite3_bind_null( stmt, 1 );
     else
-      sqlite3_bind_blob( stmt, 1, wkb, wkb_size, free );
+      sqlite3_bind_blob( stmt, 1, wkb, wkb_size, deleteWkbBlob );
     sqlite3_bind_int64( stmt, 2, FID_TO_NUMBER( iter.key() ) );
 
     // performing actual row update
@@ -4977,7 +5001,10 @@ const QgsField & QgsSpatiaLiteProvider::field( int index ) const
   return attributeFields[index];
 }
 
-
+void QgsSpatiaLiteProvider::invalidateConnections( const QString& connection )
+{
+  QgsSpatiaLiteConnPool::instance()->invalidateConnections( connection );
+}
 
 /**
  * Class factory to return a pointer to a newly created

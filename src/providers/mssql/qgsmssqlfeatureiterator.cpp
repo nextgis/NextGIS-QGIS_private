@@ -77,7 +77,20 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest& request )
   mAttributesToFetch.append( mFidCol );
 
   bool subsetOfAttributes = mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes;
-  Q_FOREACH ( int i, subsetOfAttributes ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList() )
+  QgsAttributeList attrs = subsetOfAttributes ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList();
+
+  // ensure that all attributes required for expression filter are being fetched
+  if ( subsetOfAttributes && request.filterType() == QgsFeatureRequest::FilterExpression )
+  {
+    Q_FOREACH ( const QString& field, request.filterExpression()->referencedColumns() )
+    {
+      int attrIdx = mSource->mFields.fieldNameIndex( field );
+      if ( !attrs.contains( attrIdx ) )
+        attrs << attrIdx;
+    }
+  }
+
+  Q_FOREACH ( int i, attrs )
   {
     QString fieldname = mSource->mFields.at( i ).name();
     if ( mSource->mFidColName == fieldname )
@@ -89,7 +102,10 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest& request )
   }
 
   // get geometry col
-  if ( !( request.flags() & QgsFeatureRequest::NoGeometry ) && mSource->isSpatial() )
+  if (( !( request.flags() & QgsFeatureRequest::NoGeometry )
+        || ( request.filterType() == QgsFeatureRequest::FilterExpression && request.filterExpression()->needsGeometry() )
+      )
+      && mSource->isSpatial() )
   {
     mStatement += QString( ",[%1]" ).arg( mSource->mGeometryColName );
   }
@@ -284,7 +300,7 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature& feature )
     for ( int i = 0; i < mAttributesToFetch.count(); i++ )
     {
       QVariant v = mQuery->value( i );
-      const QgsField &fld = mSource->mFields.at( i );
+      const QgsField &fld = mSource->mFields.at( mAttributesToFetch.at( i ) );
       if ( v.type() != fld.type() )
         v = QgsVectorDataProvider::convertValue( fld.type(), v.toString() );
       feature.setAttribute( mAttributesToFetch.at( i ), v );
@@ -302,6 +318,14 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature& feature )
         g->fromWkb( wkb, mParser.GetWkbLen() );
         feature.setGeometry( g );
       }
+      else
+      {
+        feature.setGeometry( nullptr );
+      }
+    }
+    else
+    {
+      feature.setGeometry( nullptr );
     }
 
     feature.setValid( true );

@@ -37,6 +37,7 @@ QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource
     , mExpressionCompiled( false )
     , mOrderByCompiled( false )
     , mLastFetch( false )
+    , mFilterRequiresGeometry( false )
 {
   if ( !source->mTransactionConnection )
   {
@@ -89,6 +90,20 @@ QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource
   }
   else if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
+    // ensure that all attributes required for expression filter are being fetched
+    if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
+    {
+      QgsAttributeList attrs = mRequest.subsetOfAttributes();
+      Q_FOREACH ( const QString& field, request.filterExpression()->referencedColumns() )
+      {
+        int attrIdx = mSource->mFields.fieldNameIndex( field );
+        if ( !attrs.contains( attrIdx ) )
+          attrs << attrIdx;
+      }
+      mRequest.setSubsetOfAttributes( attrs );
+    }
+    mFilterRequiresGeometry = request.filterExpression()->needsGeometry();
+
     if ( QSettings().value( "/qgis/compileExpressions", true ).toBool() )
     {
       //IMPORTANT - this MUST be the last clause added!
@@ -423,7 +438,7 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
 
 bool QgsPostgresFeatureIterator::declareCursor( const QString& whereClause, long limit, bool closeOnFail, const QString& orderBy )
 {
-  mFetchGeometry = !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) && !mSource->mGeometryColumn.isNull();
+  mFetchGeometry = ( !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) || mFilterRequiresGeometry ) && !mSource->mGeometryColumn.isNull();
 #if 0
   // TODO: check that all field indexes exist
   if ( !hasAllFields )
