@@ -83,6 +83,23 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
   //IMPORTANT - this MUST be the last clause added!
   else if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
+    // ensure that all attributes required for expression filter are being fetched
+    if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes && request.filterType() == QgsFeatureRequest::FilterExpression )
+    {
+      QgsAttributeList attrs = request.subsetOfAttributes();
+      Q_FOREACH ( const QString& field, request.filterExpression()->referencedColumns() )
+      {
+        int attrIdx = mSource->mFields.fieldNameIndex( field );
+        if ( !attrs.contains( attrIdx ) )
+          attrs << attrIdx;
+      }
+      mRequest.setSubsetOfAttributes( attrs );
+    }
+    if ( request.filterExpression()->needsGeometry() )
+    {
+      mFetchGeometry = true;
+    }
+
     if ( QSettings().value( "/qgis/compileExpressions", true ).toBool() )
     {
       QgsSpatiaLiteExpressionCompiler compiler = QgsSpatiaLiteExpressionCompiler( source );
@@ -235,10 +252,16 @@ bool QgsSpatiaLiteFeatureIterator::rewind()
 
 bool QgsSpatiaLiteFeatureIterator::close()
 {
-  if ( !mHandle )
+  if ( mClosed )
     return false;
 
   iteratorClosed();
+
+  if ( !mHandle )
+  {
+    mClosed = true;
+    return false;
+  }
 
   if ( sqliteStatement )
   {
@@ -319,7 +342,7 @@ bool QgsSpatiaLiteFeatureIterator::prepareStatement( const QString& whereClause,
 
 QString QgsSpatiaLiteFeatureIterator::quotedPrimaryKey()
 {
-  return !( mSource->isQuery || mSource->mViewBased ) ? "ROWID" : QgsSpatiaLiteProvider::quotedIdentifier( mSource->mPrimaryKey );
+  return mSource->mPrimaryKey.isEmpty() ? "ROWID" : QgsSpatiaLiteProvider::quotedIdentifier( mSource->mPrimaryKey );
 }
 
 QString QgsSpatiaLiteFeatureIterator::whereClauseFid()

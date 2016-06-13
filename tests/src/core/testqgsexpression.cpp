@@ -1243,10 +1243,65 @@ class TestQgsExpression: public QObject
       vPerimeter = exp3.evaluate( &context );
       QCOMPARE( vPerimeter.toDouble(), 26. );
 
+      QgsExpression deprecatedExpXAt( "$x_at(1)" );
+      context.setFeature( fPolygon );
+      QVariant xAt = deprecatedExpXAt.evaluate( &context );
+      QCOMPARE( xAt.toDouble(), 10.0 );
+      context.setFeature( fPolyline );
+      xAt = deprecatedExpXAt.evaluate( &context );
+      QCOMPARE( xAt.toDouble(), 10.0 );
+
+      QgsExpression deprecatedExpXAtNeg( "$x_at(-2)" );
+      context.setFeature( fPolygon );
+      xAt = deprecatedExpXAtNeg.evaluate( &context );
+      QCOMPARE( xAt.toDouble(), 2.0 );
+
+      QgsExpression deprecatedExpYAt( "$y_at(2)" );
+      context.setFeature( fPolygon );
+      QVariant yAt = deprecatedExpYAt.evaluate( &context );
+      QCOMPARE( yAt.toDouble(), 6.0 );
+      QgsExpression deprecatedExpYAt2( "$y_at(1)" );
+      context.setFeature( fPolyline );
+      yAt = deprecatedExpYAt2.evaluate( &context );
+      QCOMPARE( yAt.toDouble(), 0.0 );
+
+      QgsExpression deprecatedExpYAtNeg( "$y_at(-2)" );
+      context.setFeature( fPolygon );
+      yAt = deprecatedExpYAtNeg.evaluate( &context );
+      QCOMPARE( yAt.toDouble(), 6.0 );
+
+      QgsExpression expXAt( "x_at(1)" );
+      context.setFeature( fPolygon );
+      xAt = expXAt.evaluate( &context );
+      QCOMPARE( xAt.toDouble(), 10.0 );
+      context.setFeature( fPolyline );
+      xAt = expXAt.evaluate( &context );
+      QCOMPARE( xAt.toDouble(), 10.0 );
+
+      QgsExpression expXAtNeg( "x_at(-2)" );
+      context.setFeature( fPolygon );
+      xAt = expXAtNeg.evaluate( &context );
+      QCOMPARE( xAt.toDouble(), 2.0 );
+
+      QgsExpression expYAt( "y_at(2)" );
+      context.setFeature( fPolygon );
+      yAt = expYAt.evaluate( &context );
+      QCOMPARE( yAt.toDouble(), 6.0 );
+      QgsExpression expYAt2( "$y_at(1)" );
+      context.setFeature( fPolyline );
+      yAt = expYAt2.evaluate( &context );
+      QCOMPARE( yAt.toDouble(), 0.0 );
+
+      QgsExpression expYAtNeg( "y_at(-2)" );
+      context.setFeature( fPolygon );
+      yAt = expYAtNeg.evaluate( &context );
+      QCOMPARE( yAt.toDouble(), 6.0 );
+
       QgsExpression exp4( "bounds_width($geometry)" );
       QVariant vBoundsWidth = exp4.evaluate( &fPolygon );
       QCOMPARE( vBoundsWidth.toDouble(), 8.0 );
 
+      context.setFeature( fPolygon );
       vBoundsWidth = exp4.evaluate( &context );
       QCOMPARE( vBoundsWidth.toDouble(), 8.0 );
 
@@ -1981,6 +2036,47 @@ class TestQgsExpression: public QObject
       QgsExpression nodeExpression( "1 IN (1, 2, 3, 4)" );
       QgsExpression nodeExpression2( nodeExpression );
     }
+
+    void test_columnRefUnprepared()
+    {
+      //test retrieving fields from feature when expression is unprepared - explicitly specified fields collection
+      //should take precedence over feature's field collection
+
+      QgsFields fields;
+      fields.append( QgsField( "f1", QVariant::String ) );
+
+      QgsFeature f( 1 );
+      f.setFields( fields );
+
+      //also add a joined field - this will not be available in feature's field collection
+      fields.append( QgsField( "j1", QVariant::String ), QgsFields::OriginJoin, 1 );
+
+      f.setAttributes( QgsAttributes() << QVariant( "f1" ) << QVariant( "j1" ) );
+      f.setValid( true );
+
+      QgsExpression e( "\"f1\"" );
+      QgsExpressionContext context;
+      context.setFeature( f );
+      context.setFields( fields );
+      QVariant result = e.evaluate( &context );
+      QCOMPARE( result.toString(), QString( "f1" ) );
+
+      //test joined field
+      QgsExpression e2( "\"j1\"" );
+      result = e2.evaluate( &context );
+      QCOMPARE( result.toString(), QString( "j1" ) );
+
+      // final test - check that feature's field collection is also used when corresponding field NOT found
+      // in explicitly passed field collection
+      fields.append( QgsField( "f2", QVariant::String ) );
+      f.setFields( fields );
+      f.setAttributes( QgsAttributes() << QVariant( "f1" ) << QVariant( "j1" ) << QVariant( "f2" ) );
+      context.setFeature( f );
+      QgsExpression e3( "\"f2\"" );
+      result = e3.evaluate( &context );
+      QCOMPARE( result.toString(), QString( "f2" ) );
+    }
+
 };
 
 QTEST_MAIN( TestQgsExpression )

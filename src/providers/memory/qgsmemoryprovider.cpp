@@ -108,8 +108,8 @@ QgsMemoryProvider::QgsMemoryProvider( const QString& uri )
   {
     QList<QgsField> attributes;
     QRegExp reFieldDef( "\\:"
-                        "(int|integer|real|double|string|date|time|datetime)" // type
-                        "(?:\\((\\d+)"                // length
+                        "(int|integer|long|int8|real|double|string|date|time|datetime)" // type
+                        "(?:\\((\\-?\\d+)"                // length
                         "(?:\\,(\\d+))?"                // precision
                         "\\))?"
                         "$", Qt::CaseInsensitive );
@@ -131,7 +131,13 @@ QgsMemoryProvider::QgsMemoryProvider( const QString& uri )
         {
           type = QVariant::Int;
           typeName = "integer";
-          length = 10;
+          length = -1;
+        }
+        else if ( typeName == "int8" || typeName == "long" )
+        {
+          type = QVariant::LongLong;
+          typeName = "int8";
+          length = -1;
         }
         else if ( typeName == "real" || typeName == "double" )
         {
@@ -475,6 +481,7 @@ bool QgsMemoryProvider::setSubsetString( const QString& theSQL, bool updateFeatu
   }
 
   mSubsetString = theSQL;
+  mCacheMinMaxDirty = true;
 
   emit dataChanged();
   return true;

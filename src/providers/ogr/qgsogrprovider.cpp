@@ -374,7 +374,7 @@ QgsOgrProvider::QgsOgrProvider( QString const & uri )
     << QgsVectorDataProvider::NativeType( tr( "Date & Time" ), "datetime", QVariant::DateTime );
   }
 
-  QgsOgrConnPool::instance()->ref( mFilePath );
+  QgsOgrConnPool::instance()->ref( dataSourceUri() );
 }
 
 QgsOgrProvider::~QgsOgrProvider()
@@ -685,7 +685,7 @@ OGRwkbGeometryType QgsOgrProvider::getOgrGeomType( OGRLayerH ogrLayer )
 
 void QgsOgrProvider::loadFields()
 {
-  QgsOgrConnPool::instance()->invalidateConnections( filePath() );
+  QgsOgrConnPool::instance()->invalidateConnections( dataSourceUri() );
   //the attribute fields need to be read again when the encoding changes
   mAttributeFields.clear();
 
@@ -874,8 +874,8 @@ QgsRectangle QgsOgrProvider::extent()
 
           mExtent->MinX = qMin( mExtent->MinX, env.MinX );
           mExtent->MinY = qMin( mExtent->MinY, env.MinY );
-          mExtent->MaxX = qMin( mExtent->MaxX, env.MaxX );
-          mExtent->MaxY = qMin( mExtent->MaxY, env.MaxY );
+          mExtent->MaxX = qMax( mExtent->MaxX, env.MaxX );
+          mExtent->MaxY = qMax( mExtent->MaxY, env.MaxY );
         }
 
         OGR_F_Destroy( f );
@@ -1276,7 +1276,7 @@ bool QgsOgrProvider::changeAttributeValues( const QgsChangedAttributesMap &attr_
   {
     pushError( tr( "OGR error syncing to disk: %1" ).arg( CPLGetLastErrorMsg() ) );
   }
-  QgsOgrConnPool::instance()->invalidateConnections( filePath() );
+  QgsOgrConnPool::instance()->invalidateConnections( dataSourceUri() );
   return true;
 }
 
@@ -1341,7 +1341,7 @@ bool QgsOgrProvider::changeGeometryValues( const QgsGeometryMap &geometry_map )
 
     OGR_F_Destroy( theOGRFeature );
   }
-  QgsOgrConnPool::instance()->invalidateConnections( filePath() );
+  QgsOgrConnPool::instance()->invalidateConnections( dataSourceUri() );
   return syncToDisc();
 }
 
@@ -1356,7 +1356,7 @@ bool QgsOgrProvider::createSpatialIndex()
   {
     QByteArray sql = "CREATE SPATIAL INDEX ON " + quotedIdentifier( layerName );  // quote the layer name so spaces are handled
     QgsDebugMsg( QString( "SQL: %1" ).arg( FROM8( sql ) ) );
-    OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), OGR_L_GetSpatialFilter( ogrOrigLayer ), "" );
+    OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), OGR_L_GetSpatialFilter( ogrOrigLayer ), nullptr );
   }
 
   QFileInfo fi( mFilePath );     // to get the base name
@@ -1369,9 +1369,9 @@ bool QgsOgrProvider::createAttributeIndex( int field )
 {
   QByteArray quotedLayerName = quotedIdentifier( OGR_FD_GetName( OGR_L_GetLayerDefn( ogrOrigLayer ) ) );
   QByteArray dropSql = "DROP INDEX ON " + quotedLayerName;
-  OGR_DS_ExecuteSQL( ogrDataSource, dropSql.constData(), OGR_L_GetSpatialFilter( ogrOrigLayer ), "SQL" );
+  OGR_DS_ExecuteSQL( ogrDataSource, dropSql.constData(), OGR_L_GetSpatialFilter( ogrOrigLayer ), nullptr );
   QByteArray createSql = "CREATE INDEX ON " + quotedLayerName + " USING " + mEncoding->fromUnicode( fields()[field].name() );
-  OGR_DS_ExecuteSQL( ogrDataSource, createSql.constData(), OGR_L_GetSpatialFilter( ogrOrigLayer ), "SQL" );
+  OGR_DS_ExecuteSQL( ogrDataSource, createSql.constData(), OGR_L_GetSpatialFilter( ogrOrigLayer ), nullptr );
 
   QFileInfo fi( mFilePath );     // to get the base name
   //find out, if the .idm file is there
@@ -2434,7 +2434,7 @@ void QgsOgrProvider::uniqueValues( int index, QList<QVariant> &uniqueValues, int
   sql += " ORDER BY " + mEncoding->fromUnicode( fld.name() ) + " ASC";  // quoting of fieldname produces a syntax error
 
   QgsDebugMsg( QString( "SQL: %1" ).arg( mEncoding->toUnicode( sql ) ) );
-  OGRLayerH l = OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), nullptr, "SQL" );
+  OGRLayerH l = OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), nullptr, nullptr );
   if ( !l )
   {
     QgsDebugMsg( "Failed to execute SQL" );
@@ -2472,7 +2472,7 @@ QVariant QgsOgrProvider::minimumValue( int index )
     sql += " WHERE " + mEncoding->fromUnicode( mSubsetString );
   }
 
-  OGRLayerH l = OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), nullptr, "SQL" );
+  OGRLayerH l = OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), nullptr, nullptr );
   if ( !l )
   {
     QgsDebugMsg( QString( "Failed to execute SQL: %1" ).arg( mEncoding->toUnicode( sql ) ) );
@@ -2511,7 +2511,7 @@ QVariant QgsOgrProvider::maximumValue( int index )
     sql += " WHERE " + mEncoding->fromUnicode( mSubsetString );
   }
 
-  OGRLayerH l = OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), nullptr, "SQL" );
+  OGRLayerH l = OGR_DS_ExecuteSQL( ogrDataSource, sql.constData(), nullptr, nullptr );
   if ( !l )
   {
     QgsDebugMsg( QString( "Failed to execute SQL: %1" ).arg( mEncoding->toUnicode( sql ) ) );
@@ -2540,7 +2540,7 @@ QByteArray QgsOgrProvider::quotedIdentifier( QByteArray field ) const
 
 void QgsOgrProvider::forceReload()
 {
-  QgsOgrConnPool::instance()->invalidateConnections( filePath() );
+  QgsOgrConnPool::instance()->invalidateConnections( dataSourceUri() );
 }
 
 QByteArray QgsOgrUtils::quotedIdentifier( QByteArray field, const QString& ogrDriverName )
@@ -2605,7 +2605,7 @@ bool QgsOgrProvider::syncToDisc()
     {
       shapeIndex = true;
       close();
-      QgsOgrConnPool::instance()->invalidateConnections( mFilePath );
+      QgsOgrConnPool::instance()->invalidateConnections( dataSourceUri() );
       QFile::remove( sbnIndexFile );
       open();
     }
@@ -2621,7 +2621,7 @@ bool QgsOgrProvider::syncToDisc()
 
   mShapefileMayBeCorrupted = false;
 
-  QgsOgrConnPool::instance()->ref( mFilePath );
+  QgsOgrConnPool::instance()->ref( dataSourceUri() );
   if ( shapeIndex )
   {
     return createSpatialIndex();
@@ -2671,7 +2671,7 @@ void QgsOgrProvider::recalculateFeatureCount()
     OGR_L_SetSpatialFilter( ogrLayer, filter );
   }
 
-  QgsOgrConnPool::instance()->invalidateConnections( filePath() );
+  QgsOgrConnPool::instance()->invalidateConnections( dataSourceUri() );
 }
 
 bool QgsOgrProvider::doesStrictFeatureTypeCheck() const

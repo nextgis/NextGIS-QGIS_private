@@ -79,7 +79,6 @@
 #include <QNetworkReply>
 #include <QNetworkProxy>
 #include <QAuthenticator>
-#include <QNetworkDiskCache>
 
 //
 // Mac OS X Includes
@@ -399,7 +398,7 @@ static void setTitleBarText_( QWidget & qgisApp )
 */
 static QgsMessageOutput *messageOutputViewer_()
 {
-  if ( QThread::currentThread() == QApplication::instance()->thread() )
+  if ( QThread::currentThread() == qApp->thread() )
     return new QgsMessageViewer( QgisApp::instance() );
   else
     return new QgsMessageOutputConsole();
@@ -1646,14 +1645,19 @@ void QgisApp::showStyleManagerV2()
 void QgisApp::writeAnnotationItemsToProject( QDomDocument& doc )
 {
   QList<QgsAnnotationItem*> items = annotationItems();
-  QList<QgsAnnotationItem*>::const_iterator itemIt = items.constBegin();
-  for ( ; itemIt != items.constEnd(); ++itemIt )
+  QgsAnnotationItem* item;
+  QListIterator<QgsAnnotationItem*> i( items );
+  // save lowermost annotation (at end of list) first
+  i.toBack();
+  while ( i.hasPrevious() )
   {
-    if ( ! *itemIt )
+    item = i.previous();
+
+    if ( ! item )
     {
       continue;
     }
-    ( *itemIt )->writeXML( doc );
+    item->writeXML( doc );
   }
 }
 
@@ -3152,8 +3156,18 @@ void QgisApp::about()
     QString versionString = "<html><body><div align='center'><table width='100%'>";
 
     versionString += "<tr>";
-    versionString += "<td>" + tr( "QGIS version" )       + "</td><td>" + QGis::QGIS_VERSION + "</td>";
-    versionString += "<td>" + tr( "QGIS code revision" ) + QString( "</td><td><a href=\"https://github.com/qgis/QGIS/commit/%1\">%1</a></td>" ).arg( QGis::QGIS_DEV_VERSION );
+    versionString += "<td>" + tr( "QGIS version" )       + "</td><td>" + QGis::QGIS_VERSION + "</td><td>";
+
+
+    if ( QString( QGis::QGIS_DEV_VERSION ) == "exported" )
+    {
+      versionString += tr( "QGIS code branch" ) + QString( "</td><td><a href=\"https://github.com/qgis/QGIS/tree/release-%1_%2\">Release %1.%2</a></td>" )
+                       .arg( QGis::QGIS_VERSION_INT / 10000 ).arg( QGis::QGIS_VERSION_INT / 100 % 100 );
+    }
+    else
+    {
+      versionString += tr( "QGIS code revision" ) + QString( "</td><td><a href=\"https://github.com/qgis/QGIS/commit/%1\">%1</a></td>" ).arg( QGis::QGIS_DEV_VERSION );
+    }
 
     versionString += "</tr><tr>";
 
@@ -7137,37 +7151,38 @@ QgsVectorLayer *QgisApp::pasteToNewMemoryVector()
 
   QString typeName = QString( QGis::featureType( wkbType ) ).remove( "WKB" );
 
-  typeName += QString( "?memoryid=%1" ).arg( QUuid::createUuid().toString() );
-
-  QgsDebugMsg( QString( "output wkbType = %1 typeName = %2" ).arg( wkbType ).arg( typeName ) );
-
-  QString message;
-
   if ( features.isEmpty() )
   {
-    message = tr( "No features in clipboard." ); // should not happen
+    // should not happen
+    messageBar()->pushMessage( tr( "Paste features" ),
+                               tr( "No features in clipboard." ),
+                               QgsMessageBar::WARNING, messageTimeout() );
+    return nullptr;
   }
   else if ( typeCounts.isEmpty() )
   {
-    message = tr( "No features with geometry found, point type layer will be created." );
+    messageBar()->pushMessage( tr( "Paste features" ),
+                               tr( "No features with geometry found, point type layer will be created." ),
+                               QgsMessageBar::INFO, messageTimeout() );
   }
   else if ( typeCounts.size() > 1 )
   {
-    message = tr( "Multiple geometry types found, features with geometry different from %1 will be created without geometry." ).arg( typeName );
+    messageBar()->pushMessage( tr( "Paste features" ),
+                               tr( "Multiple geometry types found, features with geometry different from %1 will be created without geometry." ).arg( typeName ),
+                               QgsMessageBar::INFO, messageTimeout() );
   }
 
-  if ( !message.isEmpty() )
-  {
-    QMessageBox::warning( this, tr( "Warning" ), message, QMessageBox::Ok );
-    return nullptr;
-  }
+  typeName += QString( "?memoryid=%1" ).arg( QUuid::createUuid().toString() );
+  QgsDebugMsg( QString( "output wkbType = %1 typeName = %2" ).arg( wkbType ).arg( typeName ) );
 
   QgsVectorLayer *layer = new QgsVectorLayer( typeName, "pasted_features", "memory" );
 
   if ( !layer->isValid() || !layer->dataProvider() )
   {
     delete layer;
-    QMessageBox::warning( this, tr( "Warning" ), tr( "Cannot create new layer" ), QMessageBox::Ok );
+    messageBar()->pushMessage( tr( "Paste features" ),
+                               tr( "Cannot create new layer." ),
+                               QgsMessageBar::WARNING, messageTimeout() );
     return nullptr;
   }
 
@@ -7179,9 +7194,9 @@ QgsVectorLayer *QgisApp::pasteToNewMemoryVector()
     QgsDebugMsg( QString( "field %1 (%2)" ).arg( f.name(), QVariant::typeToName( f.type() ) ) );
     if ( !layer->addAttribute( f ) )
     {
-      QMessageBox::warning( this, tr( "Warning" ),
-                            tr( "Cannot create field %1 (%2,%3)" ).arg( f.name(), f.typeName(), QVariant::typeToName( f.type() ) ),
-                            QMessageBox::Ok );
+      messageBar()->pushMessage( tr( "Paste features" ),
+                                 tr( "Cannot create field %1 (%2,%3)" ).arg( f.name(), f.typeName(), QVariant::typeToName( f.type() ) ),
+                                 QgsMessageBar::WARNING, messageTimeout() );
       delete layer;
       return nullptr;
     }
@@ -10986,8 +11001,11 @@ void QgisApp::namSetup()
 #endif
 }
 
-void QgisApp::namAuthenticationRequired( QNetworkReply *reply, QAuthenticator *auth )
+void QgisApp::namAuthenticationRequired( QNetworkReply *inReply, QAuthenticator *auth )
 {
+  QPointer<QNetworkReply> reply( inReply );
+  Q_ASSERT( qApp->thread() == QThread::currentThread() );
+
   QString username = auth->user();
   QString password = auth->password();
 
@@ -11006,31 +11024,38 @@ void QgisApp::namAuthenticationRequired( QNetworkReply *reply, QAuthenticator *a
     }
   }
 
+  for ( ;; )
   {
-    QMutexLocker lock( QgsCredentials::instance()->mutex() );
+    bool ok;
 
-    for ( ;; )
     {
-      bool ok = QgsCredentials::instance()->get(
-                  QString( "%1 at %2" ).arg( auth->realm(), reply->url().host() ),
-                  username, password,
-                  tr( "Authentication required" ) );
-      if ( !ok )
-        return;
+      QMutexLocker lock( QgsCredentials::instance()->mutex() );
+      ok = QgsCredentials::instance()->get(
+             QString( "%1 at %2" ).arg( auth->realm(), reply->url().host() ),
+             username, password,
+             tr( "Authentication required" ) );
+    }
+    if ( !ok )
+      return;
 
-      if ( reply->isFinished() )
-        return;
+    if ( reply.isNull() || reply->isFinished() )
+      return;
 
-      if ( auth->user() != username || ( password != auth->password() && !password.isNull() ) )
-        break;
+    if ( auth->user() != username || ( password != auth->password() && !password.isNull() ) )
+      break;
 
-      // credentials didn't change - stored ones probably wrong? clear password and retry
+    // credentials didn't change - stored ones probably wrong? clear password and retry
+    {
+      QMutexLocker lock( QgsCredentials::instance()->mutex() );
       QgsCredentials::instance()->put(
         QString( "%1 at %2" ).arg( auth->realm(), reply->url().host() ),
         username, QString::null );
     }
+  }
 
-    // save credentials
+  // save credentials
+  {
+    QMutexLocker lock( QgsCredentials::instance()->mutex() );
     QgsCredentials::instance()->put(
       QString( "%1 at %2" ).arg( auth->realm(), reply->url().host() ),
       username, password
@@ -11054,27 +11079,34 @@ void QgisApp::namProxyAuthenticationRequired( const QNetworkProxy &proxy, QAuthe
   QString username = auth->user();
   QString password = auth->password();
 
+  for ( ;; )
   {
-    QMutexLocker lock( QgsCredentials::instance()->mutex() );
+    bool ok;
 
-    for ( ;; )
     {
-      bool ok = QgsCredentials::instance()->get(
-                  QString( "proxy %1:%2 [%3]" ).arg( proxy.hostName() ).arg( proxy.port() ).arg( auth->realm() ),
-                  username, password,
-                  tr( "Proxy authentication required" ) );
-      if ( !ok )
-        return;
+      QMutexLocker lock( QgsCredentials::instance()->mutex() );
+      ok = QgsCredentials::instance()->get(
+             QString( "proxy %1:%2 [%3]" ).arg( proxy.hostName() ).arg( proxy.port() ).arg( auth->realm() ),
+             username, password,
+             tr( "Proxy authentication required" ) );
+    }
+    if ( !ok )
+      return;
 
-      if ( auth->user() != username || ( password != auth->password() && !password.isNull() ) )
-        break;
+    if ( auth->user() != username || ( password != auth->password() && !password.isNull() ) )
+      break;
 
-      // credentials didn't change - stored ones probably wrong? clear password and retry
+    // credentials didn't change - stored ones probably wrong? clear password and retry
+    {
+      QMutexLocker lock( QgsCredentials::instance()->mutex() );
       QgsCredentials::instance()->put(
         QString( "proxy %1:%2 [%3]" ).arg( proxy.hostName() ).arg( proxy.port() ).arg( auth->realm() ),
         username, QString::null );
     }
+  }
 
+  {
+    QMutexLocker lock( QgsCredentials::instance()->mutex() );
     QgsCredentials::instance()->put(
       QString( "proxy %1:%2 [%3]" ).arg( proxy.hostName() ).arg( proxy.port() ).arg( auth->realm() ),
       username, password
@@ -11163,7 +11195,7 @@ void QgisApp::namSslErrors( QNetworkReply *reply, const QList<QSslError> &errors
     {
       QgsDebugMsg( "Restarting network reply timeout" );
       timer->setSingleShot( true );
-      timer->start( s.value( "/qgis/networkAndProxy/networkTimeout", "20000" ).toInt() );
+      timer->start( s.value( "/qgis/networkAndProxy/networkTimeout", "60000" ).toInt() );
     }
   }
 }

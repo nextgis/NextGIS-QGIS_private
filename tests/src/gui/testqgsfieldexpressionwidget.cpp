@@ -49,6 +49,8 @@ class TestQgsFieldExpressionWidget : public QObject
 
     void testRemoveJoin();
     void asExpression();
+    void testIsValid();
+    void testFilters();
 
   private:
     QgsFieldExpressionWidget* mWidget;
@@ -161,6 +163,111 @@ void TestQgsFieldExpressionWidget::asExpression()
   QgsMapLayerRegistry::instance()->removeMapLayer( layer );
 }
 
+void TestQgsFieldExpressionWidget::testIsValid()
+{
+  QgsVectorLayer* layer = new QgsVectorLayer( "point?field=fld:int&field=name%20with%20space:string", "x", "memory" );
+  QgsMapLayerRegistry::instance()->addMapLayer( layer );
+
+  QScopedPointer< QgsFieldExpressionWidget > widget( new QgsFieldExpressionWidget() );
+  widget->setLayer( layer );
+
+  // also check the fieldChanged signal to ensure that the emitted bool isValid value is correct
+  QSignalSpy spy( widget.data(), SIGNAL( fieldChanged( QString, bool ) ) );
+
+  // check with simple field name set
+  bool isExpression = false;
+  bool isValid = false;
+  widget->setField( "fld" );
+  QCOMPARE( widget->currentField( &isExpression, &isValid ), QString( "fld" ) );
+  QVERIFY( !isExpression );
+  QVERIFY( isValid );
+  QVERIFY( widget->isValidExpression() );
+  QCOMPARE( spy.count(), 1 );
+  QCOMPARE( spy.last().at( 0 ).toString(), QString( "fld" ) );
+  QVERIFY( spy.last().at( 1 ).toBool() );
+
+
+  //check with complex field name set
+  widget->setField( "name with space" );
+  QCOMPARE( widget->currentField( &isExpression, &isValid ), QString( "name with space" ) );
+  QVERIFY( !isExpression );
+  QVERIFY( isValid );
+  QVERIFY( !widget->isValidExpression() );
+  QCOMPARE( spy.count(), 2 );
+  QCOMPARE( spy.last().at( 0 ).toString(), QString( "name with space" ) );
+  QVERIFY( spy.last().at( 1 ).toBool() );
+
+  //check with valid expression set
+  widget->setField( "2 * 4" );
+  QCOMPARE( widget->currentField( &isExpression, &isValid ), QString( "2 * 4" ) );
+  QVERIFY( isExpression );
+  QVERIFY( isValid );
+  QVERIFY( widget->isValidExpression() );
+  QCOMPARE( spy.count(), 3 );
+  QCOMPARE( spy.last().at( 0 ).toString(), QString( "2 * 4" ) );
+  QVERIFY( spy.last().at( 1 ).toBool() );
+
+  //check with invalid expression set
+  widget->setField( "2 *" );
+  QCOMPARE( widget->currentField( &isExpression, &isValid ), QString( "2 *" ) );
+  QVERIFY( isExpression );
+  QVERIFY( !isValid );
+  QVERIFY( !widget->isValidExpression() );
+  QCOMPARE( spy.count(), 4 );
+  QCOMPARE( spy.last().at( 0 ).toString(), QString( "2 *" ) );
+  QVERIFY( !spy.last().at( 1 ).toBool() );
+
+  QgsMapLayerRegistry::instance()->removeMapLayer( layer );
+}
+
+void TestQgsFieldExpressionWidget::testFilters()
+{
+  QgsVectorLayer* layer = new QgsVectorLayer( "point?field=intfld:int&field=stringfld:string&field=string2fld:string&field=longfld:long&field=doublefld:double&field=datefld:date&field=timefld:time&field=datetimefld:datetime", "x", "memory" );
+  QgsMapLayerRegistry::instance()->addMapLayer( layer );
+
+  QScopedPointer< QgsFieldExpressionWidget > widget( new QgsFieldExpressionWidget() );
+  widget->setLayer( layer );
+
+  QCOMPARE( widget->mCombo->count(), 8 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "intfld" ) );
+  QCOMPARE( widget->mCombo->itemText( 1 ), QString( "stringfld" ) );
+  QCOMPARE( widget->mCombo->itemText( 2 ), QString( "string2fld" ) );
+  QCOMPARE( widget->mCombo->itemText( 3 ), QString( "longfld" ) );
+  QCOMPARE( widget->mCombo->itemText( 4 ), QString( "doublefld" ) );
+  QCOMPARE( widget->mCombo->itemText( 5 ), QString( "datefld" ) );
+  QCOMPARE( widget->mCombo->itemText( 6 ), QString( "timefld" ) );
+  QCOMPARE( widget->mCombo->itemText( 7 ), QString( "datetimefld" ) );
+
+  widget->setFilters( QgsFieldProxyModel::String );
+  QCOMPARE( widget->mCombo->count(), 2 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "stringfld" ) );
+  QCOMPARE( widget->mCombo->itemText( 1 ), QString( "string2fld" ) );
+
+  widget->setFilters( QgsFieldProxyModel::Int );
+  QCOMPARE( widget->mCombo->count(), 1 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "intfld" ) );
+
+  widget->setFilters( QgsFieldProxyModel::LongLong );
+  QCOMPARE( widget->mCombo->count(), 1 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "longfld" ) );
+
+  widget->setFilters( QgsFieldProxyModel::Double );
+  QCOMPARE( widget->mCombo->count(), 1 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "doublefld" ) );
+
+  widget->setFilters( QgsFieldProxyModel::Numeric );
+  QCOMPARE( widget->mCombo->count(), 3 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "intfld" ) );
+  QCOMPARE( widget->mCombo->itemText( 1 ), QString( "longfld" ) );
+  QCOMPARE( widget->mCombo->itemText( 2 ), QString( "doublefld" ) );
+
+  widget->setFilters( QgsFieldProxyModel::Date );
+  QCOMPARE( widget->mCombo->count(), 2 );
+  QCOMPARE( widget->mCombo->itemText( 0 ), QString( "datefld" ) );
+  QCOMPARE( widget->mCombo->itemText( 1 ), QString( "datetimefld" ) );
+
+  QgsMapLayerRegistry::instance()->removeMapLayer( layer );
+}
 
 QTEST_MAIN( TestQgsFieldExpressionWidget )
 #include "testqgsfieldexpressionwidget.moc"
