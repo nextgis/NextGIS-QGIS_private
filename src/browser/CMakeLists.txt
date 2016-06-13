@@ -95,7 +95,8 @@ IF(APPLE)
 ENDIF(APPLE)
 
 IF(MSVC)
-  INSTALL(FILES browser.ico DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
+  ### NextGIS # INSTALL(FILES browser.ico DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
+  INSTALL(FILES browser.ico DESTINATION ${QGIS_ICONS_DIR})
 ENDIF(MSVC)
 
 ########################################################

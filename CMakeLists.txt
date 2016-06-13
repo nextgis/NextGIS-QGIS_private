@@ -45,7 +45,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.6)
 SET(CMAKE_COLOR_MAKEFILE ON)
 
 # set path to additional CMake modules
-SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake_ng ${CMAKE_MODULE_PATH})
 
 # in generated makefiles use relative paths so the project dir is moveable
 # Note commented out since it cause problems but it would be nice to resolve these and enable
@@ -191,6 +191,8 @@ ENDIF (NOT BISON_EXECUTABLE)
 
 #############################################################
 # search for dependencies
+include(FindAnyProject)
+set(BUILD_SHARED_LIBS ON)
 
 IF(NOT WIN32 AND NOT ANDROID)
   INCLUDE(CheckFunctionExists)
@@ -208,11 +210,17 @@ IF(NOT WIN32 AND NOT ANDROID)
 ENDIF(NOT WIN32 AND NOT ANDROID)
 
 # required
-FIND_PACKAGE(Proj)
-FIND_PACKAGE(GEOS)
-FIND_PACKAGE(GDAL)
-FIND_PACKAGE(Expat REQUIRED)
-FIND_PACKAGE(Spatialindex REQUIRED)
+# NextGIS ### FIND_PACKAGE(Proj)
+# NextGIS ### FIND_PACKAGE(GEOS)
+# NextGIS ### FIND_PACKAGE(GDAL)
+# NextGIS ### FIND_PACKAGE(Expat REQUIRED)
+# NextGIS ### FIND_PACKAGE(Spatialindex REQUIRED)
+find_anyproject(PROJ4 DEFAULT ON)
+find_anyproject(GEOS DEFAULT ON)
+find_anyproject(GDAL DEFAULT ON)
+find_anyproject(EXPAT REQUIRED)
+find_anyproject(Spatialindex REQUIRED)
+
 FIND_PACKAGE(Qwt REQUIRED)
 
 IF (WITH_INTERNAL_QEXTSERIALPORT)
@@ -221,31 +229,32 @@ ELSE (WITH_INTERNAL_QEXTSERIALPORT)
   FIND_PACKAGE(Qextserialport REQUIRED)
 ENDIF(WITH_INTERNAL_QEXTSERIALPORT)
 
-FIND_PACKAGE(Sqlite3)
-IF (NOT SQLITE3_FOUND)
-  MESSAGE (SEND_ERROR "sqlite3 dependency was not found!")
-ENDIF (NOT SQLITE3_FOUND)
+# NextGIS ### FIND_PACKAGE(Sqlite3)
+find_anyproject(Sqlite3 REQUIRED)
+# NextGIS ### IF (NOT SQLITE3_FOUND)
+# NextGIS ###   MESSAGE (SEND_ERROR "sqlite3 dependency was not found!")
+# NextGIS ### ENDIF (NOT SQLITE3_FOUND)
 
 # optional
 IF (WITH_POSTGRESQL)
   FIND_PACKAGE(Postgres) # PostgreSQL provider
 ENDIF (WITH_POSTGRESQL)
 
-FIND_PACKAGE(SPATIALITE REQUIRED)
+# NextGIS ### FIND_PACKAGE(SPATIALITE REQUIRED)
+find_anyproject(Spatialite REQUIRED)
+# NextGIS ### IF(SPATIALITE_VERSION_GE_4_0_0)
+# NextGIS ###     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPATIALITE_VERSION_GE_4_0_0")
+# NextGIS ### ENDIF(SPATIALITE_VERSION_GE_4_0_0)
+# NextGIS ### IF(SPATIALITE_VERSION_G_4_1_1)
+# NextGIS ###     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPATIALITE_VERSION_G_4_1_1")
+# NextGIS ### ENDIF(SPATIALITE_VERSION_G_4_1_1)
+# NextGIS ### IF(SPATIALITE_HAS_INIT_EX)
+# NextGIS ###     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPATIALITE_HAS_INIT_EX")
+# NextGIS ### ENDIF(SPATIALITE_HAS_INIT_EX)
 
-IF(SPATIALITE_VERSION_GE_4_0_0)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPATIALITE_VERSION_GE_4_0_0")
-ENDIF(SPATIALITE_VERSION_GE_4_0_0)
-IF(SPATIALITE_VERSION_G_4_1_1)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPATIALITE_VERSION_G_4_1_1")
-ENDIF(SPATIALITE_VERSION_G_4_1_1)
-IF(SPATIALITE_HAS_INIT_EX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPATIALITE_HAS_INIT_EX")
-ENDIF(SPATIALITE_HAS_INIT_EX)
-
-IF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
-  MESSAGE (SEND_ERROR "Some dependencies were not found!")
-ENDIF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
+# NextGIS ### IF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
+# NextGIS ###   MESSAGE (SEND_ERROR "Some dependencies were not found!")
+# NextGIS ### ENDIF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
 
 IF (POSTGRES_FOUND)
   # following variable is used in qgsconfig.h
@@ -672,6 +681,7 @@ SET (QGIS_LIBEXEC_DIR ${QGIS_LIBEXEC_SUBDIR})
 SET (QGIS_DATA_DIR    ${QGIS_DATA_SUBDIR})
 SET (QGIS_PLUGIN_DIR  ${QGIS_PLUGIN_SUBDIR})
 SET (QGIS_INCLUDE_DIR ${QGIS_INCLUDE_SUBDIR})
+SET (QGIS_ICONS_DIR icons) ### NextGIS #
 
 # set the default locations where the targets (executables, libraries) will land when compiled
 # this is to allow running qgis from the source tree without having to actually do a "make install"
@@ -788,6 +798,13 @@ ENDIF (EXISTS ${CMAKE_SOURCE_DIR}/.git/index)
 
 ADD_CUSTOM_TARGET(version ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/qgsversion.h)
 
+
+#############################################################
+# customization
+SET (WITH_CUSTOMIZATION TRUE CACHE BOOL "Determines whether qgis sources should be customize")
+IF (WITH_CUSTOMIZATION)
+  include(customization)
+ENDIF (WITH_CUSTOMIZATION)
 #############################################################
 # process subdirs
 
@@ -798,7 +815,7 @@ ADD_CUSTOM_TARGET(version ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/qgsversion.h)
 SET (TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata")
 
 ADD_SUBDIRECTORY(src)
-ADD_SUBDIRECTORY(doc)
+# NextGIS ### ADD_SUBDIRECTORY(doc)
 ADD_SUBDIRECTORY(images)
 ADD_SUBDIRECTORY(resources)
 ADD_SUBDIRECTORY(i18n)
@@ -813,21 +830,21 @@ IF (ENABLE_TESTS)
   MESSAGE (STATUS "Ctest Binary Directory  set to: ${CTEST_BINARY_DIRECTORY}")
 ENDIF (ENABLE_TESTS)
 
-IF (APPLE)
-  # must be last for install, so install_name_tool can do its work
-  ADD_SUBDIRECTORY(mac)
-
-  # allow QGIS to be run directly from build directory and to run unit tests
-  EXECUTE_PROCESS(COMMAND /bin/mkdir -p "${QGIS_OUTPUT_DIRECTORY}/lib")
-  EXECUTE_PROCESS(
-    COMMAND /bin/ln -fs ../../Plugins/qgis/qgisgrass6.framework lib/
-    WORKING_DIRECTORY "${QGIS_OUTPUT_DIRECTORY}"
-  )
-  EXECUTE_PROCESS(
-    COMMAND /bin/ln -fs ../../Plugins/qgis/qgisgrass7.framework lib/
-    WORKING_DIRECTORY "${QGIS_OUTPUT_DIRECTORY}"
-  )
-ENDIF (APPLE)
+# NextGIS ### IF (APPLE)
+# NextGIS ###   # must be last for install, so install_name_tool can do its work
+# NextGIS ###   ADD_SUBDIRECTORY(mac)
+# NextGIS ### 
+# NextGIS ###   # allow QGIS to be run directly from build directory and to run unit tests
+# NextGIS ###   EXECUTE_PROCESS(COMMAND /bin/mkdir -p "${QGIS_OUTPUT_DIRECTORY}/lib")
+# NextGIS ###   EXECUTE_PROCESS(
+# NextGIS ###     COMMAND /bin/ln -fs ../../Plugins/qgis/qgisgrass6.framework lib/
+# NextGIS ###     WORKING_DIRECTORY "${QGIS_OUTPUT_DIRECTORY}"
+# NextGIS ###   )
+# NextGIS ###   EXECUTE_PROCESS(
+# NextGIS ###     COMMAND /bin/ln -fs ../../Plugins/qgis/qgisgrass7.framework lib/
+# NextGIS ###     WORKING_DIRECTORY "${QGIS_OUTPUT_DIRECTORY}"
+# NextGIS ###   )
+# NextGIS ### ENDIF (APPLE)
 
 # manual page - makes sense only on unix systems
 IF (UNIX AND NOT APPLE)
@@ -838,7 +855,7 @@ INSTALL(FILES cmake/FindQGIS.cmake DESTINATION ${QGIS_DATA_DIR})
 
 #############################################################
 # Post-install commands
-ADD_SUBDIRECTORY(postinstall)
+# NextGIS ### ADD_SUBDIRECTORY(postinstall)
 
 #############################################################
 # Uninstall stuff see: http://www.vtk.org/Wiki/CMake_FAQ
@@ -850,36 +867,39 @@ CONFIGURE_FILE(
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
+# install
+include(install)
+
 #############################################################
 # Enable packaging
 
 # Do not warn about runtime libs when building using VS Express
-IF(NOT DEFINED CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS)
-  SET(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS ON)
-ENDIF()
-INCLUDE(InstallRequiredSystemLibraries)
-
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "QGIS")
-SET(CPACK_PACKAGE_VENDOR "Open Source Geospatial Foundation")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
-SET(CPACK_PACKAGE_INSTALL_DIRECTORY "QGIS ${COMPLETE_VERSION}")
-IF(WIN32 AND NOT UNIX)
-  # There is a bug in NSI that does not handle full unix paths properly. Make
-  # sure there is at least one set of four (4) backslashes.
-  SET(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/win_build\\\\sidebar.bmp")
-  SET(CPACK_NSIS_INSTALLED_ICON_NAME "\\\\qgis.exe")
-  SET(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} QGIS")
-  SET(CPACK_NSIS_HELP_LINK "http:\\\\\\\\qgis.org")
-  SET(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\qgis.org")
-  SET(CPACK_NSIS_CONTACT "tim@linfiniti.com")
-  SET(CPACK_NSIS_MODIFY_PATH ON)
-
-#  SET(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "  !include \\\"${CMAKE_SOURCE_DIR}\\\\win_build\\\\extra.nsh\\\"")
-ELSE(WIN32 AND NOT UNIX)
-  #SET(CPACK_STRIP_FILES "QGIS")
-  #SET(CPACK_SOURCE_STRIP_FILES "")
-ENDIF(WIN32 AND NOT UNIX)
-SET(CPACK_PACKAGE_EXECUTABLES "qgis" "QGIS")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
-INCLUDE(CPack)
+# NextGIS ### IF(NOT DEFINED CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS)
+# NextGIS ###   SET(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS ON)
+# NextGIS ### ENDIF()
+# NextGIS ### INCLUDE(InstallRequiredSystemLibraries)
+# NextGIS ### 
+# NextGIS ### SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "QGIS")
+# NextGIS ### SET(CPACK_PACKAGE_VENDOR "Open Source Geospatial Foundation")
+# NextGIS ### SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+# NextGIS ### SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
+# NextGIS ### SET(CPACK_PACKAGE_INSTALL_DIRECTORY "QGIS ${COMPLETE_VERSION}")
+# NextGIS ### IF(WIN32 AND NOT UNIX)
+# NextGIS ###   # There is a bug in NSI that does not handle full unix paths properly. Make
+# NextGIS ###   # sure there is at least one set of four (4) backslashes.
+# NextGIS ###   SET(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/win_build\\\\sidebar.bmp")
+# NextGIS ###   SET(CPACK_NSIS_INSTALLED_ICON_NAME "\\\\qgis.exe")
+# NextGIS ###   SET(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} QGIS")
+# NextGIS ###   SET(CPACK_NSIS_HELP_LINK "http:\\\\\\\\qgis.org")
+# NextGIS ###   SET(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\qgis.org")
+# NextGIS ###   SET(CPACK_NSIS_CONTACT "tim@linfiniti.com")
+# NextGIS ###   SET(CPACK_NSIS_MODIFY_PATH ON)
+# NextGIS ### 
+# NextGIS ### #  SET(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "  !include \\\"${CMAKE_SOURCE_DIR}\\\\win_build\\\\extra.nsh\\\"")
+# NextGIS ### ELSE(WIN32 AND NOT UNIX)
+# NextGIS ###   #SET(CPACK_STRIP_FILES "QGIS")
+# NextGIS ###   #SET(CPACK_SOURCE_STRIP_FILES "")
+# NextGIS ### ENDIF(WIN32 AND NOT UNIX)
+# NextGIS ### SET(CPACK_PACKAGE_EXECUTABLES "qgis" "QGIS")
+# NextGIS ### SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md")
+# NextGIS ### INCLUDE(CPack)
