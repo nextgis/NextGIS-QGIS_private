@@ -801,7 +801,7 @@ ADD_CUSTOM_TARGET(version ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/qgsversion.h)
 
 #############################################################
 # customization
-SET (WITH_CUSTOMIZATION TRUE CACHE BOOL "Determines whether qgis sources should be customize")
+SET (WITH_CUSTOMIZATION FALSE CACHE BOOL "Determines whether qgis sources should be customize")
 IF (WITH_CUSTOMIZATION)
   include(customization)
 ENDIF (WITH_CUSTOMIZATION)
