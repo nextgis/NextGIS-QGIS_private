@@ -216,6 +216,9 @@ include(InstallRequiredSystemLibraries)
 
 include (CPack)
 
+#message(">>>>>>>>>>> installer: ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
+file(WRITE "${CMAKE_BINARY_DIR}\\packages.txt" "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
+
 #-----------------------------------------------------------------------------
 # Now list the cpack commands
 #-----------------------------------------------------------------------------
