@@ -165,11 +165,12 @@ endif ()
 get_filename_component(PYTHON_HOME ${PYTHON_EXECUTABLE} DIRECTORY)
 file(GLOB PYTHON_DLLs ${PYTHON_HOME}/python27.dll)
 install(FILES ${PYTHON_DLLs} DESTINATION ${QGIS_BIN_DIR})
-execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} "-c" "import os, sys, PyQt4; sys.stdout.write(os.path.dirname(PyQt4.__file__))"
-    OUTPUT_VARIABLE PYQT4_PYHTON_PACKAGE
-)
-install(DIRECTORY ${PYQT4_PYHTON_PACKAGE} DESTINATION ${PYTHON_SITE_PACKAGES_DIR})
+#execute_process(
+#    COMMAND ${PYTHON_EXECUTABLE} "-c" "import os, sys, PyQt4; sys.stdout.write(os.path.dirname(PyQt4.__file__))"
+#    OUTPUT_VARIABLE PYQT4_PYHTON_PACKAGE
+#)
+#install(DIRECTORY ${PYQT4_PYHTON_PACKAGE} DESTINATION ${PYTHON_SITE_PACKAGES_DIR})
+install(DIRECTORY ${PYTHON_HOME}/Lib/site-packages DESTINATION ${PYTHON_SITE_PACKAGES_DIR})
 # QT
 get_filename_component(QT_LIBRARIES_DIR ${QT_QTCORE_LIBRARY} DIRECTORY)
 file(GLOB QT_DLLs ${QT_LIBRARIES_DIR}/*.dll)

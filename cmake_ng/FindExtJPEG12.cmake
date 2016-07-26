@@ -22,7 +22,7 @@
 
 set(repo_name lib_jpeg)
 
-if(BUILD_SHARED_LIBS)    
+if(find_extproject_SHARED)    
     set(repo_project jpeg)
 else()
     set(repo_project jpegstatic)
@@ -30,11 +30,11 @@ endif()
 
 set(repo_include)
 
-set(JPEG12_INCLUDE_DIR ${EP_BASE}/Install/${name}_EP/include/ CACHE PATH "Include directory for 12-bit libjpeg" FORCE)
+set(JPEG12_INCLUDE_DIR ${EXT_INSTALL_DIR}/include/ CACHE PATH "Include directory for 12-bit libjpeg" FORCE)
 
 list(APPEND find_extproject_CMAKE_ARGS -DBUILD_JPEG_12=ON -DBUILD_JPEG_8=OFF)
 
-if(BUILD_SHARED_LIBS)
+if(find_extproject_SHARED)
     add_definitions(-DJPEG_DLL_IMPORTS)
 else()
     add_definitions(-DJPEG_STATIC)

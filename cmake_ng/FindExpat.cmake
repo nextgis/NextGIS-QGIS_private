@@ -1,57 +1,66 @@
-# Find Expat
-# ~~~~~~~~~~
-# Copyright (c) 2007, Martin Dobias <wonder.sk at gmail.com>
-# Redistribution and use is allowed according to the terms of the BSD license.
-# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
+#.rst:
+# FindEXPAT
+# ---------
 #
-# CMake module to search for Expat library
-# (library for parsing XML files)
+# Find expat
 #
-# If it's found it sets EXPAT_FOUND to TRUE
-# and following variables are set:
-#    EXPAT_INCLUDE_DIR
-#    EXPAT_LIBRARY
+# Find the native EXPAT headers and libraries.
+#
+# ::
+#
+#   EXPAT_INCLUDE_DIRS - where to find expat.h, etc.
+#   EXPAT_LIBRARIES    - List of libraries when using expat.
+#   EXPAT_FOUND        - True if expat found.
 
-# FIND_PATH and FIND_LIBRARY normally search standard locations
-# before the specified paths. To search non-standard paths first,
-# FIND_* is invoked first with specified paths and NO_DEFAULT_PATH
-# and then again with no specified paths to search the default
-# locations. When an earlier FIND_* succeeds, subsequent FIND_*s
-# searching for the same item do nothing. 
-FIND_PATH(EXPAT_INCLUDE_DIR expat.h
-  "$ENV{LIB_DIR}/include/"
-  "$ENV{LIB_DIR}/include/expat"
-  c:/msys/local/include
-  NO_DEFAULT_PATH
-  )
-FIND_PATH(EXPAT_INCLUDE_DIR expat.h)
-#libexpat needed for msvc version
-FIND_LIBRARY(EXPAT_LIBRARY NAMES expat expat_i libexpat PATHS 
-  "$ENV{LIB_DIR}/lib"
-  c:/msys/local/lib
-  NO_DEFAULT_PATH
-  )
-FIND_LIBRARY(EXPAT_LIBRARY NAMES expat expat_i libexpat)
+#=============================================================================
+# Copyright 2006-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distribute this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
-IF (EXPAT_INCLUDE_DIR AND EXPAT_LIBRARY)
-   SET(EXPAT_FOUND TRUE)
-ENDIF (EXPAT_INCLUDE_DIR AND EXPAT_LIBRARY)
+# Look for the header file.
+find_path(EXPAT_INCLUDE_DIR NAMES expat.h)
 
+# Look for the library.
+find_library(EXPAT_LIBRARY NAMES expat libexpat)
 
-IF (EXPAT_FOUND)
+if (EXPAT_INCLUDE_DIR AND EXISTS "${EXPAT_INCLUDE_DIR}/expat.h")
+    file(READ ${EXPAT_INCLUDE_DIR}/expat.h _VERSION_H_CONTENTS)
 
-   IF (NOT EXPAT_FIND_QUIETLY)
-      MESSAGE(STATUS "Found Expat: ${EXPAT_LIBRARY}")
-   ENDIF (NOT EXPAT_FIND_QUIETLY)
+    string(REGEX MATCH "XML_MAJOR_VERSION[ \t]+([0-9]+)"
+      XML_MAJOR_VERSION ${_VERSION_H_CONTENTS})
+    string (REGEX MATCH "([0-9]+)"
+      XML_MAJOR_VERSION ${XML_MAJOR_VERSION})
+    string(REGEX MATCH "XML_MINOR_VERSION[ \t]+([0-9]+)"
+      XML_MINOR_VERSION ${_VERSION_H_CONTENTS})
+    string (REGEX MATCH "([0-9]+)"
+      XML_MINOR_VERSION ${XML_MINOR_VERSION})
+    string(REGEX MATCH "XML_MICRO_VERSION[ \t]+([0-9]+)"
+      XML_MICRO_VERSION ${_VERSION_H_CONTENTS})
+    string (REGEX MATCH "([0-9]+)"
+      XML_MICRO_VERSION ${XML_MICRO_VERSION})
+      
+    set(EXPAT_VERSION_STRING "${XML_MAJOR_VERSION}.${XML_MINOR_VERSION}.${XML_MICRO_VERSION}")
+endif ()
 
-ELSE (EXPAT_FOUND)
+# handle the QUIETLY and REQUIRED arguments and set EXPAT_FOUND to TRUE if
+# all listed variables are TRUE
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(EXPAT
+                                  REQUIRED_VARS EXPAT_LIBRARY EXPAT_INCLUDE_DIR
+                                  VERSION_VAR EXPAT_VERSION_STRING)
 
-   IF (EXPAT_FIND_REQUIRED)
-     MESSAGE(FATAL_ERROR "Could not find Expat")
-   ELSE (EXPAT_FIND_REQUIRED)
-     IF (NOT EXPAT_FIND_QUIETLY)
-        MESSAGE(STATUS "Could not find Expat")
-     ENDIF (NOT EXPAT_FIND_QUIETLY)
-   ENDIF (EXPAT_FIND_REQUIRED)
+# Copy the results to the output variables.
+if(EXPAT_FOUND)
+  set(EXPAT_LIBRARIES ${EXPAT_LIBRARY})
+  set(EXPAT_INCLUDE_DIRS ${EXPAT_INCLUDE_DIR})
+endif()
 
-ENDIF (EXPAT_FOUND)
+mark_as_advanced(EXPAT_INCLUDE_DIR EXPAT_LIBRARY)

@@ -193,6 +193,7 @@ ENDIF (NOT BISON_EXECUTABLE)
 #############################################################
 # search for dependencies
 include(FindAnyProject)
+include(util)
 set(BUILD_SHARED_LIBS ON)
 
 IF(NOT WIN32 AND NOT ANDROID)

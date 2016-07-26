@@ -20,9 +20,9 @@
 # along with this script.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-set(repo_name freexl)
+set(repo_name lib_freexl)
 
-if(BUILD_SHARED_LIBS)    
+if(find_extproject_SHARED)    
     set(repo_project freexl)
 else()
     set(repo_project freexlstatic)
