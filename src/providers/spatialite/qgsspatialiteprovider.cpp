@@ -568,6 +568,11 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri )
     return;
   }
 
+  if ( mTableBased && hasRowid() )
+  {
+    mPrimaryKey = "ROWID";
+  }
+
   // retrieve version information
   spatialiteVersion();
 
@@ -584,6 +589,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri )
 QgsSpatiaLiteProvider::~QgsSpatiaLiteProvider()
 {
   closeDb();
+  invalidateConnections( mSqlitePath );
 }
 
 QgsAbstractFeatureSource* QgsSpatiaLiteProvider::featureSource() const
@@ -649,9 +655,6 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
     fld = fld->Next;
   }
 
-  mPrimaryKey.clear();
-  mPrimaryKeyAttrs.clear();
-
   QString sql = QString( "PRAGMA table_info(%1)" ).arg( quotedIdentifier( mTableName ) );
 
   char **results;
@@ -668,8 +671,10 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
       if ( pk.toInt() == 0 )
         continue;
 
-      if ( mPrimaryKey.isEmpty() )
+      if ( mPrimaryKeyAttrs.isEmpty() )
         mPrimaryKey = name;
+      else
+        mPrimaryKey.clear();
       mPrimaryKeyAttrs << i - 1;
     }
   }
@@ -766,7 +771,10 @@ void QgsSpatiaLiteProvider::loadFields()
         {
           // found a Primary Key column
           pkCount++;
-          pkName = name;
+          if ( mPrimaryKeyAttrs.isEmpty() )
+            pkName = name;
+          else
+            pkName.clear();
           mPrimaryKeyAttrs << i - 1;
           QgsDebugMsg( "found primaryKey " + name );
         }
@@ -841,7 +849,10 @@ void QgsSpatiaLiteProvider::loadFields()
         if ( name == mPrimaryKey )
         {
           pkCount++;
-          pkName = name;
+          if ( mPrimaryKeyAttrs.isEmpty() )
+            pkName = name;
+          else
+            pkName.clear();
           mPrimaryKeyAttrs << i - 1;
           QgsDebugMsg( "found primaryKey " + name );
         }
@@ -937,6 +948,17 @@ bool QgsSpatiaLiteProvider::hasTriggers()
   ret = sqlite3_get_table( sqliteHandle, sql.toUtf8().constData(), &results, &rows, &columns, &errMsg );
   sqlite3_free_table( results );
   return ( ret == SQLITE_OK && rows > 0 );
+}
+
+bool QgsSpatiaLiteProvider::hasRowid()
+{
+  if ( attributeFields.fieldNameIndex( "ROWID" ) >= 0 )
+    return false;
+
+  // table without rowid column
+  QString sql = QString( "SELECT rowid FROM %1 WHERE 0" ).arg( quotedIdentifier( mTableName ) );
+  char *errMsg = nullptr;
+  return sqlite3_exec( sqliteHandle, sql.toUtf8(), nullptr, nullptr, &errMsg ) == SQLITE_OK;
 }
 
 

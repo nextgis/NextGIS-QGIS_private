@@ -553,7 +553,7 @@ QVariant QgsAttributeTableModel::data( const QModelIndex &index, int role ) cons
   if ( index.column() >= mFieldCount )
     return role == Qt::DisplayRole ? rowId : QVariant();
 
-  int fieldId = mAttributes[index.column()];
+  int fieldId = mAttributes.at( index.column() );
 
   if ( role == FieldIndexRole )
     return fieldId;
@@ -593,46 +593,61 @@ QVariant QgsAttributeTableModel::data( const QModelIndex &index, int role ) cons
     val = mFeat.attribute( fieldId );
   }
 
-  if ( role == Qt::DisplayRole )
+  if ( role == SortRole )
   {
-    return mWidgetFactories[index.column()]->representValue( layer(), fieldId, mWidgetConfigs[index.column()], mAttributeWidgetCaches[index.column()], val );
+    return val;
   }
 
-  if ( role == Qt::BackgroundColorRole || role == Qt::TextColorRole || role == Qt::DecorationRole || role == Qt::FontRole )
+  switch ( role )
   {
-    mExpressionContext.setFeature( mFeat );
-    QList<QgsConditionalStyle> styles;
-    if ( mRowStylesMap.contains( index.row() ) )
+    case Qt::DisplayRole:
+      return mWidgetFactories.at( index.column() )->representValue( layer(), fieldId, mWidgetConfigs.at( index.column() ),
+             mAttributeWidgetCaches.at( index.column() ), val );
+
+    case Qt::EditRole:
+      return val;
+
+    case Qt::BackgroundColorRole:
+    case Qt::TextColorRole:
+    case Qt::DecorationRole:
+    case Qt::FontRole:
     {
-      styles = mRowStylesMap[index.row()];
+      mExpressionContext.setFeature( mFeat );
+      QList<QgsConditionalStyle> styles;
+      if ( mRowStylesMap.contains( index.row() ) )
+      {
+        styles = mRowStylesMap[index.row()];
+      }
+      else
+      {
+        styles = QgsConditionalStyle::matchingConditionalStyles( layer()->conditionalStyles()->rowStyles(), QVariant(),  mExpressionContext );
+        mRowStylesMap.insert( index.row(), styles );
+
+      }
+
+      QgsConditionalStyle rowstyle = QgsConditionalStyle::compressStyles( styles );
+      styles = layer()->conditionalStyles()->fieldStyles( field.name() );
+      styles = QgsConditionalStyle::matchingConditionalStyles( styles , val,  mExpressionContext );
+      styles.insert( 0, rowstyle );
+      QgsConditionalStyle style = QgsConditionalStyle::compressStyles( styles );
+
+      if ( style.isValid() )
+      {
+        if ( role == Qt::BackgroundColorRole && style.validBackgroundColor() )
+          return style.backgroundColor();
+        if ( role == Qt::TextColorRole && style.validTextColor() )
+          return style.textColor();
+        if ( role == Qt::DecorationRole )
+          return style.icon();
+        if ( role == Qt::FontRole )
+          return style.font();
+      }
+
+      return QVariant();
     }
-    else
-    {
-      styles = QgsConditionalStyle::matchingConditionalStyles( layer()->conditionalStyles()->rowStyles(), QVariant(),  mExpressionContext );
-      mRowStylesMap.insert( index.row(), styles );
-
-    }
-
-    QgsConditionalStyle rowstyle = QgsConditionalStyle::compressStyles( styles );
-    styles = layer()->conditionalStyles()->fieldStyles( field.name() );
-    styles = QgsConditionalStyle::matchingConditionalStyles( styles , val,  mExpressionContext );
-    styles.insert( 0, rowstyle );
-    QgsConditionalStyle style = QgsConditionalStyle::compressStyles( styles );
-
-    if ( style.isValid() )
-    {
-      if ( role == Qt::BackgroundColorRole && style.validBackgroundColor() )
-        return style.backgroundColor();
-      if ( role == Qt::TextColorRole && style.validTextColor() )
-        return style.textColor();
-      if ( role == Qt::DecorationRole )
-        return style.icon();
-      if ( role == Qt::FontRole )
-        return style.font();
-    }
-
   }
-  return val;
+
+  return QVariant();
 }
 
 bool QgsAttributeTableModel::setData( const QModelIndex &index, const QVariant &value, int role )
