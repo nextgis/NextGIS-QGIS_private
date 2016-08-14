@@ -163,8 +163,8 @@ endif ()
 #-----------------------------------------------------------------------------
 #PYTHON
 get_filename_component(PYTHON_HOME ${PYTHON_EXECUTABLE} DIRECTORY)
-#file(GLOB PYTHON_DLLs ${PYTHON_HOME}/python27.dll)
-#install(FILES ${PYTHON_DLLs} DESTINATION ${QGIS_BIN_DIR})
+file(GLOB PYTHON_DLLs ${PYTHON_HOME}/python27.dll)
+install(FILES ${PYTHON_DLLs} DESTINATION ${QGIS_BIN_DIR})
 #execute_process(
 #    COMMAND ${PYTHON_EXECUTABLE} "-c" "import os, sys, PyQt4; sys.stdout.write(os.path.dirname(PyQt4.__file__))"
 #    OUTPUT_VARIABLE PYQT4_PYHTON_PACKAGE
