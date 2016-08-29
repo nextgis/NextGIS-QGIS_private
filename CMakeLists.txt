@@ -512,9 +512,10 @@ ENDIF(ENABLE_COVERAGE)
 
 IF (WIN32)
   SET (DEFAULT_LIB_SUBDIR     lib)
-  SET (DEFAULT_LIBEXEC_SUBDIR .)
-  SET (DEFAULT_DATA_SUBDIR    .)
-  SET (DEFAULT_PLUGIN_SUBDIR  plugins)
+  SET (DEFAULT_LIBEXEC_SUBDIR lib${LIB_SUFFIX}/qgis)
+  SET (DEFAULT_DATA_SUBDIR    share/qgis)
+  #SET (DEFAULT_PLUGIN_SUBDIR  plugins)
+  SET (DEFAULT_PLUGIN_SUBDIR  lib${LIB_SUFFIX}/qgis/plugins)
   SET (DEFAULT_INCLUDE_SUBDIR include)
 
   IF (MSVC)
@@ -683,7 +684,6 @@ SET (QGIS_LIBEXEC_DIR ${QGIS_LIBEXEC_SUBDIR})
 SET (QGIS_DATA_DIR    ${QGIS_DATA_SUBDIR})
 SET (QGIS_PLUGIN_DIR  ${QGIS_PLUGIN_SUBDIR})
 SET (QGIS_INCLUDE_DIR ${QGIS_INCLUDE_SUBDIR})
-SET (QGIS_ICONS_DIR icons) ### NextGIS #
 
 # set the default locations where the targets (executables, libraries) will land when compiled
 # this is to allow running qgis from the source tree without having to actually do a "make install"
