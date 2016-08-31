@@ -38,8 +38,8 @@ ADD_LIBRARY (offlineeditingplugin MODULE
 )
 
 TARGET_LINK_LIBRARIES(offlineeditingplugin
-	qgis_core
-	qgis_gui
+	${QGIS_CORE_TARGET_NAME}
+	${QGIS_GUI_TARGET_NAME}
 	${SPATIALITE_LIBRARY}
 )
 

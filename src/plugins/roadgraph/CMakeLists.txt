@@ -48,9 +48,9 @@ ADD_LIBRARY (roadgraphplugin MODULE ${VRP_SRCS} ${VRP_MOC_SRCS} ${VRP_RCC_SRCS})
 
 
 TARGET_LINK_LIBRARIES(roadgraphplugin
-  qgis_core
-  qgis_gui
-  qgis_networkanalysis
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
+  ${QGIS_NETWORKANALYSIS_TARGET_NAME}
 )
 
 

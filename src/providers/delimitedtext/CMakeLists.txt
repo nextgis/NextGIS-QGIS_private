@@ -35,7 +35,7 @@ QT4_WRAP_CPP(DTEXT_MOC_SRCS ${DTEXT_MOC_HDRS})
 ADD_LIBRARY(delimitedtextprovider MODULE ${DTEXT_SRCS} ${DTEXT_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES(delimitedtextprovider
-  qgis_core
+  ${QGIS_CORE_TARGET_NAME}
 )
 
 ########################################################

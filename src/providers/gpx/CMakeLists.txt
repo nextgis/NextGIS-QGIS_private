@@ -30,7 +30,7 @@ ADD_LIBRARY(gpxprovider MODULE ${GPX_SRCS} ${GPX_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES(gpxprovider
   ${EXPAT_LIBRARY}
-  qgis_core
+  ${QGIS_CORE_TARGET_NAME}
 )
 
 

@@ -199,8 +199,8 @@ MACRO(ADD_GRASSPLUGIN GRASS_BUILD_VERSION)
 
     TARGET_LINK_LIBRARIES(grassplugin${GRASS_BUILD_VERSION}
       qgisgrass${GRASS_BUILD_VERSION}
-      qgis_app
-      qgis_gui
+      ${QGIS_CORE_TARGET_NAME}
+      ${QGIS_GUI_TARGET_NAME}
       ${OPENPTY_LIBRARY}
     )
 

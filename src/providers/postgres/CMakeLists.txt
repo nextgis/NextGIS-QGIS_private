@@ -61,8 +61,8 @@ ADD_LIBRARY (postgresprovider MODULE ${PG_SRCS} ${PG_HDRS} ${PG_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES (postgresprovider
   ${POSTGRES_LIBRARY}
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 

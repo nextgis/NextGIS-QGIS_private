@@ -44,8 +44,8 @@ INCLUDE_DIRECTORIES(SYSTEM
 ADD_LIBRARY(wmsprovider MODULE ${WMS_SRCS} ${WMS_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES(wmsprovider
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
   ${QT_QTSCRIPT_LIBRARY}
   ${GDAL_LIBRARY}  # for OGR_G_CreateGeometryFromJson()
 )

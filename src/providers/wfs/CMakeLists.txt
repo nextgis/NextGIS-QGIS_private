@@ -43,8 +43,8 @@ ADD_LIBRARY (wfsprovider MODULE ${WFS_SRCS} ${WFS_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES (wfsprovider
   ${EXPAT_LIBRARY}
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 

@@ -113,8 +113,8 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
 
     IF (GRASS_MAJOR_VERSION LESS 7 )
       SET(GRASS_TARGET_LINK_LIBRARIES${GRASS_BUILD_VERSION}
-          qgis_core
-          qgis_gui
+          ${QGIS_CORE_TARGET_NAME}
+          ${QGIS_GUI_TARGET_NAME}
           ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
           ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_vect}
           ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_I}
@@ -124,8 +124,8 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
       )
     ELSE (GRASS_MAJOR_VERSION LESS 7 )
       SET(GRASS_TARGET_LINK_LIBRARIES${GRASS_BUILD_VERSION}
-        qgis_core
-        qgis_gui
+        ${QGIS_CORE_TARGET_NAME}
+        ${QGIS_GUI_TARGET_NAME}
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_vector}
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
@@ -153,7 +153,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
     )
     TARGET_LINK_LIBRARIES(grassprovider${GRASS_BUILD_VERSION}
       qgisgrass${GRASS_BUILD_VERSION}
-      qgis_gui
+      ${QGIS_GUI_TARGET_NAME}
     )
 
     #
@@ -168,7 +168,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
     )
     TARGET_LINK_LIBRARIES(grassrasterprovider${GRASS_BUILD_VERSION} 
       qgisgrass${GRASS_BUILD_VERSION} 
-      qgis_core
+      ${QGIS_CORE_TARGET_NAME}
     )
 
     # override default path where built files are put to allow running qgis without installing
@@ -231,7 +231,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_gis}
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
         ${GDAL_LIBRARY}
-        qgis_core
+        ${QGIS_CORE_TARGET_NAME}
       )
     ELSE (GRASS_MAJOR_VERSION LESS 7 )
       TARGET_LINK_LIBRARIES(qgis.r.in${GRASS_BUILD_VERSION}
@@ -240,7 +240,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_datetime}
         ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_raster}
         ${GDAL_LIBRARY}
-        qgis_core
+        ${QGIS_CORE_TARGET_NAME}
       )
     ENDIF (GRASS_MAJOR_VERSION LESS 7 )
 
@@ -259,7 +259,7 @@ MACRO(ADD_GRASSLIB GRASS_BUILD_VERSION)
       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_dbmibase}
       ${GRASS_LIBRARY${GRASS_BUILD_VERSION}_dbmiclient}
       ${GDAL_LIBRARY}
-      qgis_core
+      ${QGIS_CORE_TARGET_NAME}
     )
 
     ########################################################
@@ -768,7 +768,7 @@ IF(WITH_GRASS_DIRECT)
   ENDIF (NOT APPLE)
 
   TARGET_LINK_LIBRARIES(${FAKE_LIB_GRASS_GIS}
-    qgis_core
+    ${QGIS_CORE_TARGET_NAME}
   )
 
   INSTALL(TARGETS ${FAKE_LIB_GRASS_GIS}

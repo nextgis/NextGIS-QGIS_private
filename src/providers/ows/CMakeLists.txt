@@ -20,8 +20,8 @@ QT4_WRAP_CPP(OWS_MOC_SRCS ${OWS_MOC_HDRS})
 ADD_LIBRARY (owsprovider MODULE ${OWS_SRCS} ${OWS_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES (owsprovider
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 INSTALL(TARGETS owsprovider

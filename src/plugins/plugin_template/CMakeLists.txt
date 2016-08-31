@@ -35,8 +35,8 @@ INCLUDE_DIRECTORIES(
 )
 
 TARGET_LINK_LIBRARIES([pluginlcasename]plugin
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 

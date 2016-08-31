@@ -55,8 +55,8 @@ ADD_LIBRARY(virtuallayerprovider MODULE
 )
 
 TARGET_LINK_LIBRARIES( virtuallayerprovider
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
   ${QT_QTCORE_LIBRARY}
   ${QT_QTGUI_LIBRARY}
   ${SQLITE3_LIBRARY}

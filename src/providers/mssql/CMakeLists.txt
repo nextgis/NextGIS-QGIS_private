@@ -46,8 +46,8 @@ INCLUDE_DIRECTORIES(
 ADD_LIBRARY(mssqlprovider MODULE ${MSSQL_SRCS} ${MSSQL_MOC_SRCS} ${MSSQL_HDRS})
 
 TARGET_LINK_LIBRARIES(mssqlprovider
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
   ${QT_QTSQL_LIBRARY}
 )
 ########################################################

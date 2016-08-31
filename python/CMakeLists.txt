@@ -150,7 +150,7 @@ ENDIF(NOT PYQT4_VERSION_NUM LESS 264453)
 FILE(GLOB_RECURSE sip_files_core core/*.sip)
 SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core})
 SET(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.core.api)
-ADD_SIP_PYTHON_MODULE(qgis._core core/core.sip qgis_core)
+ADD_SIP_PYTHON_MODULE(qgis._core core/core.sip ${QGIS_CORE_TARGET_NAME})
 
 # additional gui includes
 INCLUDE_DIRECTORIES(
@@ -178,7 +178,7 @@ IF(UNIX AND NOT SIP_VERSION_NUM LESS 265984)
   ADD_DEFINITIONS(-Dprotected=public)
 ENDIF(UNIX AND NOT SIP_VERSION_NUM LESS 265984)
 
-ADD_SIP_PYTHON_MODULE(qgis._gui gui/gui.sip qgis_core qgis_gui)
+ADD_SIP_PYTHON_MODULE(qgis._gui gui/gui.sip ${QGIS_CORE_TARGET_NAME} ${QGIS_GUI_TARGET_NAME})
 
 SET(PY_MODULES core gui analysis networkanalysis)
 
@@ -196,7 +196,7 @@ IF (WITH_SERVER AND WITH_SERVER_PLUGINS)
   )
   SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_server})
   SET(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.server.api)
-  ADD_SIP_PYTHON_MODULE(qgis._server server/server.sip qgis_core qgis_server)
+  ADD_SIP_PYTHON_MODULE(qgis._server server/server.sip ${QGIS_CORE_TARGET_NAME} qgis_server)
 ENDIF (WITH_SERVER AND WITH_SERVER_PLUGINS)
 
 # additional analysis includes
@@ -223,13 +223,13 @@ FILE(GLOB sip_files_analysis
 )
 SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_analysis})
 SET(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.analysis.api)
-ADD_SIP_PYTHON_MODULE(qgis._analysis analysis/analysis.sip qgis_core qgis_analysis)
+ADD_SIP_PYTHON_MODULE(qgis._analysis analysis/analysis.sip ${QGIS_CORE_TARGET_NAME} ${QGIS_ANALYSIS_TARGET_NAME})
 
 # network-analysis module
 FILE(GLOB_RECURSE sip_files_network_analysis analysis/network/*.sip)
 SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_network_analysis})
 SET(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.networkanalysis.api)
-ADD_SIP_PYTHON_MODULE(qgis._networkanalysis analysis/network/networkanalysis.sip qgis_core qgis_networkanalysis)
+ADD_SIP_PYTHON_MODULE(qgis._networkanalysis analysis/network/networkanalysis.sip ${QGIS_CORE_TARGET_NAME} ${QGIS_NETWORKANALYSIS_TARGET_NAME})
 
 SET(QGIS_PYTHON_DIR ${PYTHON_SITE_PACKAGES_DIR}/qgis)
 

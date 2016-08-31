@@ -47,9 +47,9 @@ INCLUDE_DIRECTORIES(SYSTEM
 )
 
 TARGET_LINK_LIBRARIES(zonalstatisticsplugin
-  qgis_analysis
-  qgis_core
-  qgis_gui
+  ${QGIS_ANALYSIS_TARGET_NAME}
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 

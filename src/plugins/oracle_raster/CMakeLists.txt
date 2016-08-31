@@ -43,8 +43,8 @@ INCLUDE_DIRECTORIES( SYSTEM
 )
 
 TARGET_LINK_LIBRARIES(oracleplugin
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 

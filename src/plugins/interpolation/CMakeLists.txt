@@ -55,9 +55,9 @@ INCLUDE_DIRECTORIES(
 )
 
 TARGET_LINK_LIBRARIES(interpolationplugin
-  qgis_analysis
-  qgis_core
-  qgis_gui
+  ${QGIS_ANALYSIS_TARGET_NAME}
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 

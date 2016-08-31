@@ -23,7 +23,7 @@ INCLUDE_DIRECTORIES(SYSTEM
 ADD_LIBRARY(ogrprovider MODULE ${OGR_SRCS} ${OGR_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES(ogrprovider
-  qgis_core
+  ${QGIS_CORE_TARGET_NAME}
 )
 IF (MSVC)
   #needed for linking to gdal which needs odbc

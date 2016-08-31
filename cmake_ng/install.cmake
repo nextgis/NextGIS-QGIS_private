@@ -162,48 +162,49 @@ endif ()
 #-----------------------------------------------------------------------------
 # INSTALLation of not building components
 #-----------------------------------------------------------------------------
-#PYTHON
-get_filename_component(PYTHON_HOME ${PYTHON_EXECUTABLE} DIRECTORY)
-file(GLOB PYTHON_DLLs ${PYTHON_HOME}/python27.dll)
-install(FILES ${PYTHON_DLLs} DESTINATION ${QGIS_BIN_DIR})
-install(DIRECTORY ${PYTHON_HOME}/Lib DESTINATION lib/Python27)
-install(DIRECTORY ${PYTHON_HOME}/DLLs DESTINATION lib/Python27)
-# QT
-get_filename_component(QT_LIBRARIES_DIR ${QT_QTCORE_LIBRARY} DIRECTORY)
-file(GLOB QT_DLLs ${QT_LIBRARIES_DIR}/*.dll)
-install(FILES ${QT_DLLs} DESTINATION ${QGIS_BIN_DIR})
-install(DIRECTORY ${QT_PLUGINS_DIR} DESTINATION ${QGIS_BIN_DIR} FILES_MATCHING PATTERN "*.dll")
-# QWT
-get_filename_component(QWT_LIBRARIES_DIR ${QWT_LIBRARY} DIRECTORY)
-file(GLOB QWT_DLLs ${QWT_LIBRARIES_DIR}/*.dll)
-install(FILES ${QWT_DLLs} DESTINATION ${QGIS_BIN_DIR})
-# QWT Polar
-get_filename_component(QWTPOLAR_LIBRARIES_DIR ${QWTPOLAR_LIBRARY} DIRECTORY)
-file(GLOB QWTPOLAR_DLLs ${QWTPOLAR_LIBRARIES_DIR}/*.dll)
-install(FILES ${QWTPOLAR_DLLs} DESTINATION ${QGIS_BIN_DIR})
-# QCA
-get_filename_component(QCA_LIBRARIES_DIR ${QCA_LIBRARY} DIRECTORY)
-get_filename_component(QCA_INSTALL_DIR ${QCA_LIBRARIES_DIR} DIRECTORY)
-set(QCA_BIN_DIR ${QCA_INSTALL_DIR}/bin)
-file(GLOB QCA_DLLs ${QCA_BIN_DIR}/*.dll)
-install(FILES ${QCA_DLLs} DESTINATION ${QGIS_BIN_DIR})
-# install(DIRECTORY ${QCA_LIBRARIES_DIR}/qca/crypto DESTINATION ${QGIS_BIN_DIR}) # this is in qt plugins
+if (WIN32)
+  #PYTHON
+  get_filename_component(PYTHON_HOME ${PYTHON_EXECUTABLE} DIRECTORY)
+  file(GLOB PYTHON_DLLs ${PYTHON_HOME}/python27.dll)
+  install(FILES ${PYTHON_DLLs} DESTINATION ${QGIS_BIN_DIR})
+  install(DIRECTORY ${PYTHON_HOME}/Lib DESTINATION lib/Python27)
+  install(DIRECTORY ${PYTHON_HOME}/DLLs DESTINATION lib/Python27)
+  # QT
+  get_filename_component(QT_LIBRARIES_DIR ${QT_QTCORE_LIBRARY} DIRECTORY)
+  file(GLOB QT_DLLs ${QT_LIBRARIES_DIR}/*.dll)
+  install(FILES ${QT_DLLs} DESTINATION ${QGIS_BIN_DIR})
+  install(DIRECTORY ${QT_PLUGINS_DIR} DESTINATION ${QGIS_BIN_DIR} FILES_MATCHING PATTERN "*.dll")
+  # QWT
+  get_filename_component(QWT_LIBRARIES_DIR ${QWT_LIBRARY} DIRECTORY)
+  file(GLOB QWT_DLLs ${QWT_LIBRARIES_DIR}/*.dll)
+  install(FILES ${QWT_DLLs} DESTINATION ${QGIS_BIN_DIR})
+  # QWT Polar
+  get_filename_component(QWTPOLAR_LIBRARIES_DIR ${QWTPOLAR_LIBRARY} DIRECTORY)
+  file(GLOB QWTPOLAR_DLLs ${QWTPOLAR_LIBRARIES_DIR}/*.dll)
+  install(FILES ${QWTPOLAR_DLLs} DESTINATION ${QGIS_BIN_DIR})
+  # QCA
+  get_filename_component(QCA_LIBRARIES_DIR ${QCA_LIBRARY} DIRECTORY)
+  get_filename_component(QCA_INSTALL_DIR ${QCA_LIBRARIES_DIR} DIRECTORY)
+  set(QCA_BIN_DIR ${QCA_INSTALL_DIR}/bin)
+  file(GLOB QCA_DLLs ${QCA_BIN_DIR}/*.dll)
+  install(FILES ${QCA_DLLs} DESTINATION ${QGIS_BIN_DIR})
+  # install(DIRECTORY ${QCA_LIBRARIES_DIR}/qca/crypto DESTINATION ${QGIS_BIN_DIR}) # this is in qt plugins
 
-# OpenSSL need for openssl qca plugin
-find_anyproject(OpenSSL REQUIRED)
-# get_filename_component(OPENSSL_ROOT_DIR ${OPENSSL_INCLUDE_DIR} DIRECTORY)
-# file(GLOB OPENSSL_DLLs ${OPENSSL_ROOT_DIR}/*.dll)
-# install(FILES ${OPENSSL_DLLs} DESTINATION ${QGIS_BIN_DIR})
+  # OpenSSL need for openssl qca plugin
+  find_anyproject(OpenSSL REQUIRED)
+  # get_filename_component(OPENSSL_ROOT_DIR ${OPENSSL_INCLUDE_DIR} DIRECTORY)
+  # file(GLOB OPENSSL_DLLs ${OPENSSL_ROOT_DIR}/*.dll)
+  # install(FILES ${OPENSSL_DLLs} DESTINATION ${QGIS_BIN_DIR})
 
-#---
-#
-#---
-CONFIGURE_FILE(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake_templates/ngq.bat.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/ngq.bat"
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ngq.bat DESTINATION ${QGIS_BIN_DIR})
-
+  #---
+  #   win run script
+  #---
+  CONFIGURE_FILE(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_templates/ngq.bat.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/ngq.bat"
+  )
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ngq.bat DESTINATION ${QGIS_BIN_DIR})
+endif()
 #-----------------------------------------------------------------------------
 # Create the desktop link
 #-----------------------------------------------------------------------------
@@ -216,7 +217,7 @@ include(InstallRequiredSystemLibraries)
 include (CPack)
 
 #message(">>>>>>>>>>> installer: ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
-file(WRITE "${CMAKE_BINARY_DIR}\\ftp_upload.bat" "curl -u %1 -T ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}.exe %2")
+file(WRITE "${CMAKE_BINARY_DIR}/ftp_upload.bat" "curl -u %1 -T ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}.exe %2")
 
 #-----------------------------------------------------------------------------
 # Now list the cpack commands

@@ -25,8 +25,8 @@ QT4_WRAP_CPP(GDAL_MOC_SRCS ${GDAL_MOC_HDRS})
 ADD_LIBRARY (gdalprovider MODULE ${GDAL_SRCS} ${GDAL_MOC_SRCS})
 
 TARGET_LINK_LIBRARIES (gdalprovider
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
 )
 
 INSTALL(TARGETS gdalprovider
