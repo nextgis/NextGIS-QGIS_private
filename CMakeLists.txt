@@ -22,7 +22,9 @@ SET(QGIS_APP_TARGET_NAME "${NG_BIN_PREFIX}qgis_app")
 SET(QGIS_CORE_TARGET_NAME "${NG_BIN_PREFIX}qgis_core")
 SET(QGIS_GUI_TARGET_NAME "${NG_BIN_PREFIX}qgis_gui")
 SET(QGIS_NETWORKANALYSIS_TARGET_NAME "${NG_BIN_PREFIX}qgis_networkanalysis")
-SET(QGIS_PYTHON_TARGET_NAME "${NG_BIN_PREFIX}qgispython")
+SET(QGIS_PYTHON_TARGET_NAME "${NG_BIN_PREFIX}qgispython" CACHE STRING "QGIS Python lib name")
+
+MARK_AS_ADVANCED (QGIS_PYTHON_TARGET_NAME)
 
 #############################################################
 # QGIS settings
@@ -859,7 +861,7 @@ ENDIF (ENABLE_TESTS)
 
 # manual page - makes sense only on unix systems
 IF (UNIX AND NOT APPLE)
-  INSTALL (FILES qgis.1 qbrowser.1 DESTINATION ${QGIS_MANUAL_DIR}/man1)
+  INSTALL (FILES qgis.1 DESTINATION ${QGIS_MANUAL_DIR}/man1)
 ENDIF (UNIX AND NOT APPLE)
 
 INSTALL(FILES cmake/FindQGIS.cmake DESTINATION ${QGIS_DATA_DIR})
