@@ -24,8 +24,6 @@ SET(QGIS_GUI_TARGET_NAME "${NG_BIN_PREFIX}qgis_gui")
 SET(QGIS_NETWORKANALYSIS_TARGET_NAME "${NG_BIN_PREFIX}qgis_networkanalysis")
 SET(QGIS_PYTHON_TARGET_NAME "${NG_BIN_PREFIX}qgispython" CACHE STRING "QGIS Python lib name")
 
-MARK_AS_ADVANCED (QGIS_PYTHON_TARGET_NAME)
-
 #############################################################
 # QGIS settings
 SET(CPACK_PACKAGE_VERSION_MAJOR "2")
