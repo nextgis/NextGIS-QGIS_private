@@ -2,6 +2,12 @@
 
 QGIS build by NextGIS
 
+## Supported raster formats include:
+
+## Supported vector formats include:
+
+## Preinstall python plugins
+
 # About QGIS
 
 [![Build Status](https://travis-ci.org/qgis/QGIS.svg?branch=master)](https://travis-ci.org/qgis/QGIS)
