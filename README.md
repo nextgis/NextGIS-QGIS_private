@@ -1,3 +1,7 @@
+# About NextGIS QGIS
+
+QGIS build by NextGIS
+
 # About QGIS
 
 [![Build Status](https://travis-ci.org/qgis/QGIS.svg?branch=master)](https://travis-ci.org/qgis/QGIS)
