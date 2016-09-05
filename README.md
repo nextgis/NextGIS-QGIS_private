@@ -2,6 +2,14 @@
 
 QGIS build by NextGIS
 
+## Providers support
+
+*GDAL - Yes
+
+*OGR - Yes
+
+*GRASS - No
+
 ## Supported raster formats include:
 
 ## Supported vector formats include:
