@@ -2,6 +2,13 @@
 
 QGIS build by NextGIS
 
+# Build status
+
+| OS | Status  |
+|---|:-:|
+| Windows | ![build status](http://176.9.38.120/buildbot/png?builder=makengq2) |
+| Ubuntu (packaging) | ![build status](http://176.9.38.120/buildbot/png?builder=makengq2_deb) |
+
 ## Providers support
 
 *GDAL - Yes
