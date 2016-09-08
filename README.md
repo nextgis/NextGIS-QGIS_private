@@ -15,6 +15,8 @@ QGIS build by NextGIS
 
 *OGR - Yes
 
+*Postgres - No
+
 *GRASS - No
 
 ## Supported raster formats include:
