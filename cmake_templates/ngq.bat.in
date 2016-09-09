@@ -6,4 +6,4 @@ set QT_RASTER_CLIP_LIMIT=4096
 set PYTHONHOME=%NGQ_ROOT%\lib\Python27
 set PYTHONPATH=%NGQ_ROOT%\lib\Python27\site-packages;%PYTHONPATH%
 
-start "Start NextGIS QGIS" /B "bin\qgis.exe" --configpath "%UserProfile%\${QGIS_CONFIG_DIR_NAME}" %*
+start "Start NextGIS QGIS" /B "bin\ngqgis.exe" --configpath "%UserProfile%\${QGIS_CONFIG_DIR_NAME}" %*
