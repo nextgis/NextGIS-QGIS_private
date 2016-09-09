@@ -208,7 +208,9 @@ endif()
 #-----------------------------------------------------------------------------
 # Create the desktop link
 #-----------------------------------------------------------------------------
-string(REPLACE "/" "\\" QGIS_ICO_DIR_4_NSIS ${QGIS_DATA_DIR})
+string(REPLACE "/" "\\\\" QGIS_ICO_DIR_4_NSIS ${QGIS_DATA_DIR})
+message(">>>>>>>>>>> QGIS_DATA_DIR: ${QGIS_DATA_DIR}")
+message(">>>>>>>>>>> QGIS_ICO_DIR_4_NSIS: ${QGIS_ICO_DIR_4_NSIS}")
 LIST(APPEND CPACK_NSIS_EXTRA_INSTALL_COMMANDS "CreateShortCut '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk' '$INSTDIR\\\\bin\\\\ngq.bat' '' '$INSTDIR\\\\${QGIS_ICO_DIR_4_NSIS}\\\\qgis.ico''' SW_SHOWNORMAL '' 'Run NextGIS QGIS' ")
 LIST(APPEND CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "Delete '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk'")
 
