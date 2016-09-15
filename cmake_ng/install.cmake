@@ -162,6 +162,10 @@ endif ()
 #-----------------------------------------------------------------------------
 # INSTALLation of not building components
 #-----------------------------------------------------------------------------
+include(InstallRequiredSystemLibraries)
+
+include (CPack)
+
 if (WIN32)
   #PYTHON
   get_filename_component(PYTHON_HOME ${PYTHON_EXECUTABLE} DIRECTORY)
@@ -204,23 +208,22 @@ if (WIN32)
     "${CMAKE_CURRENT_BINARY_DIR}/ngq.bat"
   )
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ngq.bat DESTINATION ${QGIS_BIN_DIR})
+
+  #-----------------------------------------------------------------------------
+  # Create the desktop link
+  #-----------------------------------------------------------------------------
+  string(REPLACE "/" "\\\\" QGIS_ICO_DIR_4_NSIS ${QGIS_DATA_DIR})
+  LIST(APPEND CPACK_NSIS_EXTRA_INSTALL_COMMANDS "CreateShortCut '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk' '$INSTDIR\\\\bin\\\\ngq.bat' '' '$INSTDIR\\\\${QGIS_ICO_DIR_4_NSIS}\\\\qgis.ico''' SW_SHOWNORMAL '' 'Run NextGIS QGIS' ")
+  LIST(APPEND CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "Delete '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk'")
+
+
+  file(WRITE "${CMAKE_BINARY_DIR}/ftp_upload.bat" "curl -u %1 -T ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}.exe %2")
+
+elseif(UNIX)
+  # for adding into debian applications list
+  install(FILES ${CMAKE_SOURCE_DIR}/inst/debian/ngqgis.desktop DESTINATION share/applications)
+
 endif()
-#-----------------------------------------------------------------------------
-# Create the desktop link
-#-----------------------------------------------------------------------------
-string(REPLACE "/" "\\\\" QGIS_ICO_DIR_4_NSIS ${QGIS_DATA_DIR})
-message(">>>>>>>>>>> QGIS_DATA_DIR: ${QGIS_DATA_DIR}")
-message(">>>>>>>>>>> QGIS_ICO_DIR_4_NSIS: ${QGIS_ICO_DIR_4_NSIS}")
-LIST(APPEND CPACK_NSIS_EXTRA_INSTALL_COMMANDS "CreateShortCut '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk' '$INSTDIR\\\\bin\\\\ngq.bat' '' '$INSTDIR\\\\${QGIS_ICO_DIR_4_NSIS}\\\\qgis.ico''' SW_SHOWNORMAL '' 'Run NextGIS QGIS' ")
-LIST(APPEND CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "Delete '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk'")
-
-include(InstallRequiredSystemLibraries)
-
-include (CPack)
-
-#message(">>>>>>>>>>> installer: ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
-file(WRITE "${CMAKE_BINARY_DIR}/ftp_upload.bat" "curl -u %1 -T ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}.exe %2")
-
 #-----------------------------------------------------------------------------
 # Now list the cpack commands
 #-----------------------------------------------------------------------------

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=2.3
+Type=Application
+Name=NextGIS QGIS
+Exec=ngqgis
+Icon=/usr/share/ngqgis/images/icons/qgis-icon.png
+Terminal=false
+X-MultipleArgs=false
+Categories=GIS;Science;
+StartupNotify=true
+MimeType=application/x-formbuilder;
