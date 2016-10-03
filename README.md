@@ -15,7 +15,7 @@ QGIS build by NextGIS
 
 *OGR - Yes
 
-*Postgres - No
+*Postgres - Yes for Linux
 
 *GRASS - No
 
