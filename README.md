@@ -25,6 +25,9 @@ QGIS build by NextGIS
 
 ## Preinstall python plugins
 
+## Additional c++ plugins
+dtclassifier
+
 # About QGIS
 
 [![Build Status](https://travis-ci.org/qgis/QGIS.svg?branch=master)](https://travis-ci.org/qgis/QGIS)
