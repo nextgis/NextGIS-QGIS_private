@@ -103,10 +103,10 @@ SET (WITH_CUSTOM_WIDGETS FALSE CACHE BOOL "Determines whether QGIS custom widget
 SET (WITH_ASTYLE FALSE CACHE BOOL "If you plan to contribute you should reindent with scripts/prepare-commit.sh (using 'our' astyle)")
 
 # try to configure and build POSTGRESQL support
-SET (WITH_POSTGRESQL TRUE CACHE BOOL "Determines whether POSTGRESQL support should be built")
-IF (WITH_POSTGRESQL)
-  SET (POSTGRESQL_PREFIX "" CACHE PATH "Path to POSTGRESQL base directory")
-ENDIF (WITH_POSTGRESQL)
+# NextGIS ### SET (WITH_POSTGRESQL TRUE CACHE BOOL "Determines whether POSTGRESQL support should be built")
+# NextGIS ### IF (WITH_POSTGRESQL)
+# NextGIS ###   SET (POSTGRESQL_PREFIX "" CACHE PATH "Path to POSTGRESQL base directory")
+# NextGIS ### ENDIF (WITH_POSTGRESQL)
 
 SET (WITH_INTERNAL_QEXTSERIALPORT TRUE CACHE BOOL "Use internal build of Qextserialport")
 
@@ -252,6 +252,7 @@ find_anyproject(Sqlite3 REQUIRED)
 # NextGIS ### ENDIF (WITH_POSTGRESQL)
 
 find_anyproject(PostgreSQL REQUIRED)
+SET (WITH_POSTGRESQL TRUE)
 SET (HAVE_POSTGRESQL TRUE)
 
 # NextGIS ### FIND_PACKAGE(SPATIALITE REQUIRED)

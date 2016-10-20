@@ -212,9 +212,6 @@ if (WIN32)
   LIST(APPEND CPACK_NSIS_EXTRA_INSTALL_COMMANDS "CreateShortCut '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk' '$INSTDIR\\\\bin\\\\ngq.bat' '' '$INSTDIR\\\\${QGIS_ICO_DIR_4_NSIS}\\\\qgis.ico''' SW_SHOWNORMAL '' 'Run NextGIS QGIS' ")
   LIST(APPEND CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "Delete '$DESKTOP\\\\${NGQ_RUN_SHORTCUT_NAME}.lnk'")
 
-
-  file(WRITE "${CMAKE_BINARY_DIR}/ftp_upload.bat" "curl -u %1 -T ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}.exe %2")
-
 elseif(UNIX)
   # for adding into debian applications list
   install(FILES ${CMAKE_SOURCE_DIR}/inst/debian/ngqgis.desktop DESTINATION share/applications)
@@ -224,6 +221,14 @@ endif()
 include(InstallRequiredSystemLibraries)
 
 include (CPack)
+
+#-------------
+# ftp upload script
+# --------------
+if (WIN32)
+    file(WRITE "${CMAKE_BINARY_DIR}/ftp_upload.bat" "curl -u %1 -T ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}.exe %2")
+endif()
+
 #-----------------------------------------------------------------------------
 # Now list the cpack commands
 #-----------------------------------------------------------------------------
