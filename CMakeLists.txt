@@ -247,9 +247,12 @@ find_anyproject(Sqlite3 REQUIRED)
 # NextGIS ### ENDIF (NOT SQLITE3_FOUND)
 
 # optional
-IF (WITH_POSTGRESQL)
-  FIND_PACKAGE(Postgres) # PostgreSQL provider
-ENDIF (WITH_POSTGRESQL)
+# NextGIS ### IF (WITH_POSTGRESQL)
+# NextGIS ###   find_anyproject(PostgreSQL) # PostgreSQL provider
+# NextGIS ### ENDIF (WITH_POSTGRESQL)
+
+find_anyproject(PostgreSQL REQUIRED)
+SET (HAVE_POSTGRESQL TRUE)
 
 # NextGIS ### FIND_PACKAGE(SPATIALITE REQUIRED)
 find_anyproject(Spatialite REQUIRED)
@@ -267,10 +270,10 @@ find_anyproject(Spatialite REQUIRED)
 # NextGIS ###   MESSAGE (SEND_ERROR "Some dependencies were not found!")
 # NextGIS ### ENDIF (NOT PROJ_FOUND OR NOT GEOS_FOUND OR NOT GDAL_FOUND)
 
-IF (POSTGRES_FOUND)
-  # following variable is used in qgsconfig.h
-  SET (HAVE_POSTGRESQL TRUE)
-ENDIF (POSTGRES_FOUND)
+# NextGIS ### IF (POSTGRES_FOUND)
+# NextGIS ###   # following variable is used in qgsconfig.h
+# NextGIS ###   SET (HAVE_POSTGRESQL TRUE)
+# NextGIS ### ENDIF (POSTGRES_FOUND)
 
 # following variable is used in qgsconfig.h
 SET (HAVE_SPATIALITE TRUE)

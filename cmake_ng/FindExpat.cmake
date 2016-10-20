@@ -29,7 +29,7 @@
 find_path(EXPAT_INCLUDE_DIR NAMES expat.h)
 
 # Look for the library.
-find_library(EXPAT_LIBRARY NAMES expat libexpat)
+find_library(EXPAT_LIBRARY NAMES expat expat_i libexpat)
 
 if (EXPAT_INCLUDE_DIR AND EXISTS "${EXPAT_INCLUDE_DIR}/expat.h")
     file(READ ${EXPAT_INCLUDE_DIR}/expat.h _VERSION_H_CONTENTS)

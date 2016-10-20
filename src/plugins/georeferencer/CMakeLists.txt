@@ -1,6 +1,6 @@
-FIND_PACKAGE(GSL)      # Georeferencer
+find_anyproject(GSL REQUIRED)      # Georeferencer
 
-IF(GSL_FOUND)
+# IF(GSL_FOUND)
 
 ########################################################
 # Files
@@ -82,7 +82,7 @@ INCLUDE_DIRECTORIES(
      ..
 )
 INCLUDE_DIRECTORIES(SYSTEM
-     ${GSL_INCLUDE_DIR}
+     # ${GSL_INCLUDE_DIR}
      ${QGIS_INCLUDE_DIR}
      ${GDAL_INCLUDE_DIR}
      ${GEOS_INCLUDE_DIR}
@@ -93,8 +93,10 @@ INCLUDE_DIRECTORIES(SYSTEM
 TARGET_LINK_LIBRARIES(georefplugin
   ${QGIS_CORE_TARGET_NAME}
   ${QGIS_GUI_TARGET_NAME}
-  ${GSL_LIBRARIES}
+  # ${GSL_LIBRARIES}
 )
+
+target_link_extlibraries(georefplugin)
 
 ########################################################
 # Install
@@ -103,4 +105,4 @@ INSTALL(TARGETS georefplugin
   RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
   LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
 
-ENDIF(GSL_FOUND)
+# ENDIF(GSL_FOUND)

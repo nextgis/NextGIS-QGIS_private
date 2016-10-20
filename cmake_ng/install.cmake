@@ -162,10 +162,6 @@ endif ()
 #-----------------------------------------------------------------------------
 # INSTALLation of not building components
 #-----------------------------------------------------------------------------
-include(InstallRequiredSystemLibraries)
-
-include (CPack)
-
 if (WIN32)
   #PYTHON
   get_filename_component(PYTHON_HOME ${PYTHON_EXECUTABLE} DIRECTORY)
@@ -224,6 +220,10 @@ elseif(UNIX)
   install(FILES ${CMAKE_SOURCE_DIR}/inst/debian/ngqgis.desktop DESTINATION share/applications)
 
 endif()
+
+include(InstallRequiredSystemLibraries)
+
+include (CPack)
 #-----------------------------------------------------------------------------
 # Now list the cpack commands
 #-----------------------------------------------------------------------------
