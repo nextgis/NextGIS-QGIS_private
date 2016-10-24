@@ -52,7 +52,7 @@ ENDMACRO (PLUGIN_INSTALL)
 ADD_SUBDIRECTORY(fTools)
 ADD_SUBDIRECTORY(GdalTools)
 # NextGIS ###  ADD_SUBDIRECTORY(db_manager)
-# NextGIS - temporarily ###  ADD_SUBDIRECTORY(processing)
+ADD_SUBDIRECTORY(processing)
 ADD_SUBDIRECTORY(MetaSearch)
 
 PY_COMPILE(staged-plugins "${PYTHON_OUTPUT_DIRECTORY}/plugins")
