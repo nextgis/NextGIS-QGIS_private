@@ -15,7 +15,7 @@ QGIS build by NextGIS
 
 *OGR - Yes
 
-*Postgres - Yes for Linux
+*Postgres - Yes
 
 *GRASS - No
 
@@ -24,8 +24,10 @@ QGIS build by NextGIS
 ## Supported vector formats include:
 
 ## Preinstall python plugins
+processing
 
 ## Additional c++ plugins
+georefplugin
 dtclassifier
 
 # About QGIS
