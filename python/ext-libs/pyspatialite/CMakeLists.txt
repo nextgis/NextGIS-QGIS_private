@@ -37,7 +37,9 @@ IF (NOT APPLE)
   TARGET_LINK_LIBRARIES(pyspatialite ${PYTHON_LIBRARY})
 ENDIF (NOT APPLE)
 
-TARGET_LINK_LIBRARIES(pyspatialite qgis_core ${SPATIALITE_LIBRARY})
+TARGET_LINK_LIBRARIES(pyspatialite ${QGIS_CORE_TARGET_NAME})
+
+target_link_extlibraries(pyspatialite) # link SPATIALITE_LIBRARY
 
 IF (APPLE)
   SET_TARGET_PROPERTIES(pyspatialite PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
