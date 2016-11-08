@@ -25,7 +25,11 @@ __copyright__ = '(C) 2013, Bernhard Ströbl'
 
 __revision__ = '$Format:%H$'
 
+import os
+
+from qgis.PyQt.QtGui import QIcon
 from PyQt4.QtCore import QLocale, QDate, QVariant
+
 from qgis.core import QgsFeatureRequest, QgsFeature, QgsGeometry
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
@@ -39,6 +43,7 @@ from processing.core.parameters import ParameterSelection
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects
 
+pluginPath = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
 
 class Eliminate(GeoAlgorithm):
 

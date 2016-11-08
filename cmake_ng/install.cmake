@@ -46,8 +46,6 @@ if(CUSTOMIZATION_NGQ_PROGNAME)
     string(TOLOWER ${CUSTOMIZATION_NGQ_PROGNAME} QGIS_CONFIG_DIR_NAME)
     string(REPLACE " " "_" QGIS_CONFIG_DIR_NAME ${QGIS_CONFIG_DIR_NAME})
     set(QGIS_CONFIG_DIR_NAME ".${QGIS_CONFIG_DIR_NAME}")
-else()
-    set (QGIS_CONFIG_DIR_NAME ".ngq2")
 endif()
 
 if(CUSTOMIZATION_NGQ_SHORTCUT_NAME)
@@ -199,6 +197,11 @@ if (WIN32)
   #---
   #   win run script
   #---
+  set(NGQ_RUN_ARGUMENTS "")
+  if(QGIS_CONFIG_DIR_NAME)
+    set(NGQ_RUN_ARGUMENTS "--configpath \"%UserProfile%\\${QGIS_CONFIG_DIR_NAME}\"")
+  endif()
+
   CONFIGURE_FILE(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake_templates/ngq.bat.in"
     "${CMAKE_CURRENT_BINARY_DIR}/ngq.bat"
