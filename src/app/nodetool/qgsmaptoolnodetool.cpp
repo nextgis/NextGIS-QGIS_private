@@ -201,6 +201,7 @@ QgsFeature QgsMapToolNodeTool::getFeatureAtPoint( QgsMapMouseEvent* e )
 
   QgsFeatureRequest request;
   request.setFilterRect( QgsRectangle( e->mapPoint().x(), e->mapPoint().y(), e->mapPoint().x(), e->mapPoint().y() ) );
+  request.setFlags( QgsFeatureRequest::ExactIntersect );
   QgsFeatureIterator features = vlayer->getFeatures( request );
   features.nextFeature( feature );
 
@@ -762,6 +763,11 @@ int QgsMapToolNodeTool::insertSegmentVerticesForSnap( const QList<QgsSnappingRes
   QList<QgsSnappingResult>::const_iterator it = snapResults.constBegin();
   for ( ; it != snapResults.constEnd(); ++it )
   {
+    //skip if snappingResult is in a different layer
+    //See http://hub.qgis.org/issues/13952#note-29
+    if ( it->layer != editedLayer )
+      continue;
+
     //skip if id is in skip list or we have already added a vertex to a feature
     if ( skipFids.contains( it->snappedAtGeometry ) || addedFeatures.contains( it->snappedAtGeometry ) )
       continue;

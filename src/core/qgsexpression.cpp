@@ -49,6 +49,8 @@
 #include "qgscurvepolygonv2.h"
 #include "qgsexpressionprivate.h"
 #include "qgsexpressionsorter.h"
+#include "qgsmessagelog.h"
+#include "qgscsexception.h"
 
 #if QT_VERSION < 0x050000
 #include <qtextdocument.h>
@@ -2634,8 +2636,16 @@ static QVariant fcnTransformGeometry( const QVariantList& values, const QgsExpre
     return QVariant::fromValue( fGeom );
 
   QgsCoordinateTransform t( s, d );
-  if ( fGeom.transform( t ) == 0 )
-    return QVariant::fromValue( fGeom );
+  try
+  {
+    if ( fGeom.transform( t ) == 0 )
+      return QVariant::fromValue( fGeom );
+  }
+  catch ( QgsCsException &cse )
+  {
+    QgsMessageLog::logMessage( QString( "Transform error caught in transform() function: %1" ).arg( cse.what() ) );
+    return QVariant();
+  }
   return QVariant();
 }
 
@@ -3751,9 +3761,11 @@ QVariant QgsExpression::NodeBinaryOperator::eval( QgsExpression *parent, const Q
       {
         return TVL_Unknown;
       }
-      else if ( isDoubleSafe( vL ) && isDoubleSafe( vR ) )
+      else if ( isDoubleSafe( vL ) && isDoubleSafe( vR ) &&
+                ( vL.type() != QVariant::String || vR.type() != QVariant::String ) )
       {
-        // do numeric comparison if both operators can be converted to numbers
+        // do numeric comparison if both operators can be converted to numbers,
+        // and they aren't both string
         double fL = getDoubleValue( vL, parent );
         ENSURE_NO_EVAL_ERROR;
         double fR = getDoubleValue( vR, parent );
@@ -3780,7 +3792,8 @@ QVariant QgsExpression::NodeBinaryOperator::eval( QgsExpression *parent, const Q
       else // both operators non-null
       {
         bool equal = false;
-        if ( isDoubleSafe( vL ) && isDoubleSafe( vR ) )
+        if ( isDoubleSafe( vL ) && isDoubleSafe( vR ) &&
+             ( vL.type() != QVariant::String || vR.type() != QVariant::String ) )
         {
           double fL = getDoubleValue( vL, parent );
           ENSURE_NO_EVAL_ERROR;
@@ -3820,9 +3833,33 @@ QVariant QgsExpression::NodeBinaryOperator::eval( QgsExpression *parent, const Q
         if ( mOp == boLike || mOp == boILike || mOp == boNotLike || mOp == boNotILike ) // change from LIKE syntax to regexp
         {
           QString esc_regexp = QRegExp::escape( regexp );
-          // XXX escape % and _  ???
-          esc_regexp.replace( '%', ".*" );
-          esc_regexp.replace( '_', '.' );
+          // manage escape % and _
+          if ( esc_regexp.startsWith( '%' ) )
+          {
+            esc_regexp.replace( 0, 1, ".*" );
+          }
+          QRegExp rx( "[^\\\\](%)" );
+          int pos = 0;
+          while (( pos = rx.indexIn( esc_regexp, pos ) ) != -1 )
+          {
+            esc_regexp.replace( pos + 1, 1, ".*" );
+            pos += 1;
+          }
+          rx.setPattern( "\\\\%" );
+          esc_regexp.replace( rx, "%" );
+          if ( esc_regexp.startsWith( '_' ) )
+          {
+            esc_regexp.replace( 0, 1, "." );
+          }
+          rx.setPattern( "[^\\\\](_)" );
+          pos = 0;
+          while (( pos = rx.indexIn( esc_regexp, pos ) ) != -1 )
+          {
+            esc_regexp.replace( pos + 1, 1, '.' );
+            pos += 1;
+          }
+          rx.setPattern( "\\\\_" );
+          esc_regexp.replace( rx, "_" );
           matches = QRegExp( esc_regexp, mOp == boLike || mOp == boNotLike ? Qt::CaseSensitive : Qt::CaseInsensitive ).exactMatch( str );
         }
         else

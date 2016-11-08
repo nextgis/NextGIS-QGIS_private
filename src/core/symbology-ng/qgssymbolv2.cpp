@@ -469,8 +469,11 @@ void QgsSymbolV2::startRender( QgsRenderContext& context, const QgsFields* field
 void QgsSymbolV2::stopRender( QgsRenderContext& context )
 {
   Q_UNUSED( context )
-  Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )
-    layer->stopRender( *mSymbolRenderContext );
+  if ( mSymbolRenderContext )
+  {
+    Q_FOREACH ( QgsSymbolLayerV2* layer, mLayers )
+      layer->stopRender( *mSymbolRenderContext );
+  }
 
   delete mSymbolRenderContext;
   mSymbolRenderContext = nullptr;
@@ -630,16 +633,17 @@ QString QgsSymbolV2::dump() const
   return s;
 }
 
-void QgsSymbolV2::toSld( QDomDocument &doc, QDomElement &element, QgsStringMap props ) const
+void QgsSymbolV2::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap&  props ) const
 {
-  props[ "alpha" ] = QString::number( alpha() );
+  QgsStringMap locProps( props );
+  locProps[ "alpha" ] = QString::number( alpha() );
   double scaleFactor = 1.0;
-  props[ "uom" ] = QgsSymbolLayerV2Utils::encodeSldUom( outputUnit(), &scaleFactor );
-  props[ "uomScale" ] = ( !qgsDoubleNear( scaleFactor, 1.0 ) ? QString::number( scaleFactor ) : "" );
+  locProps[ "uom" ] = QgsSymbolLayerV2Utils::encodeSldUom( outputUnit(), &scaleFactor );
+  locProps[ "uomScale" ] = ( !qgsDoubleNear( scaleFactor, 1.0 ) ? qgsDoubleToString( scaleFactor ) : "" );
 
   for ( QgsSymbolLayerV2List::const_iterator it = mLayers.begin(); it != mLayers.end(); ++it )
   {
-    ( *it )->toSld( doc, element, props );
+    ( *it )->toSld( doc, element, locProps );
   }
 }
 

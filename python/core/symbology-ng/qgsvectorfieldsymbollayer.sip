@@ -34,6 +34,9 @@ class QgsVectorFieldSymbolLayer : QgsMarkerSymbolLayerV2
     bool setSubSymbol( QgsSymbolV2* symbol /Transfer/ );
     QgsSymbolV2* subSymbol();
 
+    void setColor( const QColor& color );
+    virtual QColor color() const;
+
     void renderPoint( QPointF point, QgsSymbolV2RenderContext& context );
     void startRender( QgsSymbolV2RenderContext& context );
     void stopRender( QgsSymbolV2RenderContext& context );
@@ -41,6 +44,7 @@ class QgsVectorFieldSymbolLayer : QgsMarkerSymbolLayerV2
     virtual QgsVectorFieldSymbolLayer* clone() const /Factory/;
     QgsStringMap properties() const;
 
+    //! Writes the SLD element following the SLD v1.1 specs
     void toSld( QDomDocument& doc, QDomElement &element, const QgsStringMap& props ) const;
 
     void drawPreviewIcon( QgsSymbolV2RenderContext& context, QSize size );

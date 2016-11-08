@@ -18,10 +18,13 @@ import urllib
 from mimetools import Message
 from StringIO import StringIO
 from qgis.server import QgsServer
-from qgis.core import QgsMessageLog
+from qgis.core import QgsMessageLog, QgsRenderChecker
 from qgis.testing import unittest
+from qgis.PyQt.QtCore import QSize
 from utilities import unitTestDataPath
 import osgeo.gdal
+import tempfile
+import base64
 
 # Strip path and content length because path may vary
 RE_STRIP_PATH = r'MAP=[^&]+|Content-Length: \d+'
@@ -40,6 +43,13 @@ class TestQgsServer(unittest.TestCase):
             except KeyError:
                 pass
         self.server = QgsServer()
+
+    def assert_headers(self, header, body):
+        headers = Message(StringIO(header))
+        if 'content-length' in headers:
+            content_length = int(headers['content-length'])
+            body_length = len(body)
+            self.assertEqual(content_length, body_length, msg="Header reported content-length: %d Actual body length was: %d" % (content_length, body_length))
 
     def test_destructor_segfaults(self):
         """Segfault on destructor?"""
@@ -264,9 +274,19 @@ class TestQgsServer(unittest.TestCase):
 
         query_string = 'MAP=%s&SERVICE=WFS&VERSION=1.0.0&REQUEST=%s' % (urllib.quote(project), request)
         header, body = [str(_v) for _v in self.server.handleRequest(query_string)]
+        self.result_compare(
+            'wfs_getfeature_' + requestid + '.txt',
+            u"request %s failed.\n Query: %s" % (
+                query_string,
+                request,
+            ),
+            header, body
+        )
+
+    def result_compare(self, file_name, error_msg_header, header, body):
         self.assert_headers(header, body)
         response = header + body
-        f = open(self.testdata_path + 'wfs_getfeature_' + requestid + '.txt')
+        f = open(self.testdata_path + file_name)
         expected = f.read()
         f.close()
         # Store the output for debug or to regenerate the reference documents:
@@ -280,9 +300,8 @@ class TestQgsServer(unittest.TestCase):
         """
         response = re.sub(RE_STRIP_PATH, '', response)
         expected = re.sub(RE_STRIP_PATH, '', expected)
-        self.assertEqual(response, expected, msg=u"request %s failed.\n Query: %s\n Expected:\n%s\n\n Response:\n%s"
-                                                 % (query_string,
-                                                    request,
+        self.assertEqual(response, expected, msg=u"%s\n Expected:\n%s\n\n Response:\n%s"
+                                                 % (error_msg_header,
                                                     unicode(expected, errors='replace'),
                                                     unicode(response, errors='replace')))
 
@@ -290,16 +309,147 @@ class TestQgsServer(unittest.TestCase):
         tests = []
         tests.append(('nobbox', u'GetFeature&TYPENAME=testlayer'))
         tests.append(('startindex2', u'GetFeature&TYPENAME=testlayer&STARTINDEX=2'))
+        tests.append(('limit2', u'GetFeature&TYPENAME=testlayer&MAXFEATURES=2'))
+        tests.append(('start1_limit1', u'GetFeature&TYPENAME=testlayer&MAXFEATURES=1&STARTINDEX=1'))
 
         for id, req in tests:
             self.wfs_getfeature_compare(id, req)
 
-    def assert_headers(self, header, body):
-        headers = Message(StringIO(header))
-        if 'content-length' in headers:
-            content_length = int(headers['content-length'])
-            body_length = len(body)
-            self.assertEqual(content_length, body_length, msg="Header reported content-length: %d Actual body length was: %d" % (content_length, body_length))
+    def wfs_getfeature_post_compare(self, requestid, request):
+        project = self.testdata_path + "test+project_wfs.qgs"
+        assert os.path.exists(project), "Project file not found: " + project
+
+        query_string = 'MAP={}'.format(urllib.quote(project))
+        self.server.putenv("REQUEST_METHOD", "POST")
+        self.server.putenv("REQUEST_BODY", request)
+        header, body = self.server.handleRequest(query_string)
+        self.server.putenv("REQUEST_METHOD", '')
+        self.server.putenv("REQUEST_BODY", '')
+
+        self.result_compare(
+            'wfs_getfeature_{}.txt'.format(requestid),
+            "GetFeature in POST for '{}' failed.".format(requestid),
+            header, body,
+        )
+
+    def test_getfeature_post(self):
+        template = """<?xml version="1.0" encoding="UTF-8"?>
+<wfs:GetFeature service="WFS" version="1.0.0" {} xmlns:wfs="http://www.opengis.net/wfs" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.1.0/wfs.xsd">
+  <wfs:Query typeName="testlayer" xmlns:feature="http://www.qgis.org/gml">
+    <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
+      <ogc:BBOX>
+        <ogc:PropertyName>geometry</ogc:PropertyName>
+        <gml:Envelope xmlns:gml="http://www.opengis.net/gml">
+          <gml:lowerCorner>8 44</gml:lowerCorner>
+          <gml:upperCorner>9 45</gml:upperCorner>
+        </gml:Envelope>
+      </ogc:BBOX>
+    </ogc:Filter>
+  </wfs:Query>
+</wfs:GetFeature>
+"""
+
+        tests = []
+        tests.append(('nobbox', template.format("")))
+        tests.append(('startindex2', template.format('startIndex="2"')))
+        tests.append(('limit2', template.format('maxFeatures="2"')))
+        tests.append(('start1_limit1', template.format('startIndex="1" maxFeatures="1"')))
+
+        for id, req in tests:
+            self.wfs_getfeature_post_compare(id, req)
+
+    def test_getLegendGraphics(self):
+        """Test that does not return an exception but an image"""
+        parms = {
+            'MAP': self.testdata_path + "test%2Bproject.qgs",
+            'SERVICE': 'WMS',
+            'VERSIONE': '1.0.0',
+            'REQUEST': 'GetLegendGraphic',
+            'FORMAT': 'image/png',
+            #'WIDTH': '20', # optional
+            #'HEIGHT': '20', # optional
+            'LAYER': u'testlayer+èé',
+        }
+        qs = '&'.join([u"%s=%s" % (k, v) for k, v in parms.iteritems()])
+        h, r = self.server.handleRequest(qs)
+        self.assertEquals(-1, h.find('Content-Type: text/xml; charset=utf-8'), "Header: %s\nResponse:\n%s" % (h, r))
+        self.assertNotEquals(-1, h.find('Content-Type: image/png'), "Header: %s\nResponse:\n%s" % (h, r))
+
+    def test_getLegendGraphics_layertitle(self):
+        """Test that does not return an exception but an image"""
+        parms = {
+            'MAP': self.testdata_path + "test%2Bproject.qgs",
+            'SERVICE': 'WMS',
+            'VERSION': '1.3.0',
+            'REQUEST': 'GetLegendGraphic',
+            'FORMAT': 'image/png',
+            #'WIDTH': '20', # optional
+            #'HEIGHT': '20', # optional
+            'LAYER': u'testlayer+èé',
+            'LAYERTITLE': 'TRUE',
+        }
+        qs = '&'.join([u"%s=%s" % (k, v) for k, v in parms.iteritems()])
+        r, h = self._result(self.server.handleRequest(qs))
+        self._img_diff_error(r, h, "WMS_GetLegendGraphic_test", 250, QSize(10, 10))
+
+        parms = {
+            'MAP': self.testdata_path + "test%2Bproject.qgs",
+            'SERVICE': 'WMS',
+            'VERSION': '1.3.0',
+            'REQUEST': 'GetLegendGraphic',
+            'FORMAT': 'image/png',
+            #'WIDTH': '20', # optional
+            #'HEIGHT': '20', # optional
+            'LAYER': u'testlayer+èé',
+            'LAYERTITLE': 'FALSE',
+        }
+        qs = '&'.join([u"%s=%s" % (k, v) for k, v in parms.iteritems()])
+        r, h = self._result(self.server.handleRequest(qs))
+        self._img_diff_error(r, h, "WMS_GetLegendGraphic_test_layertitle_false", 250, QSize(10, 10))
+
+    def _result(self, data):
+        headers = {}
+        for line in data[0].decode('UTF-8').split("\n"):
+            if line != "":
+                header = line.split(":")
+                self.assertEqual(len(header), 2, line)
+                headers[str(header[0])] = str(header[1]).strip()
+
+        return data[1], headers
+
+    def _img_diff(self, image, control_image, max_diff, max_size_diff=QSize()):
+        temp_image = os.path.join(tempfile.gettempdir(), "%s_result.png" % control_image)
+
+        with open(temp_image, "wb") as f:
+            f.write(image)
+
+        control = QgsRenderChecker()
+        control.setControlPathPrefix("qgis_server")
+        control.setControlName(control_image)
+        control.setRenderedImage(temp_image)
+        if max_size_diff.isValid():
+            control.setSizeTolerance(max_size_diff.width(), max_size_diff.height())
+        return control.compareImages(control_image), control.report()
+
+    def _img_diff_error(self, response, headers, image, max_diff=10, max_size_diff=QSize()):
+        self.assertEqual(
+            headers.get("Content-Type"), "image/png",
+            "Content type is wrong: %s" % headers.get("Content-Type"))
+        test, report = self._img_diff(response, image, max_diff, max_size_diff)
+
+        with open(os.path.join(tempfile.gettempdir(), image + "_result.png"), "rb") as rendered_file:
+            encoded_rendered_file = base64.b64encode(rendered_file.read())
+            message = "Image is wrong\n%s\nImage:\necho '%s' | base64 -d >%s/%s_result.png" % (
+                report, encoded_rendered_file.strip(), tempfile.gettempdir(), image
+            )
+
+        with open(os.path.join(tempfile.gettempdir(), image + "_result_diff.png"), "rb") as diff_file:
+            encoded_diff_file = base64.b64encode(diff_file.read())
+            message += "\nDiff:\necho '%s' | base64 -d > %s/%s_result_diff.png" % (
+                encoded_diff_file.strip(), tempfile.gettempdir(), image
+            )
+
+        self.assertTrue(test, message)
 
     # The following code was used to test type conversion in python bindings
     # def test_qpair(self):
@@ -307,7 +457,5 @@ class TestQgsServer(unittest.TestCase):
     #    f, s = self.server.testQPair(('First', 'Second'))
     #    self.assertEqual(f, 'First')
     #    self.assertEqual(s, 'Second')
-
-
 if __name__ == '__main__':
     unittest.main()

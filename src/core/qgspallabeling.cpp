@@ -18,6 +18,7 @@
 #include "qgspallabeling.h"
 #include "qgstextlabelfeature.h"
 #include "qgsunittypes.h"
+#include "qgsstringutils.h"
 
 #include <list>
 
@@ -2093,12 +2094,10 @@ void QgsPalLayerSettings::calculateLabelSize( const QFontMetricsF* fm, QString t
 #endif
 }
 
-void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &context, const QString& dxfLayer, QgsLabelFeature** labelFeature , QgsGeometry* obstacleGeometry )
+void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &context, QgsLabelFeature** labelFeature , QgsGeometry* obstacleGeometry )
 {
   // either used in QgsPalLabeling (palLayer is set) or in QgsLabelingEngineV2 (labelFeature is set)
   Q_ASSERT( labelFeature );
-
-  Q_UNUSED( dxfLayer ); // now handled in QgsDxfLabelProvider
 
   QVariant exprVal; // value() is repeatedly nulled on data defined evaluation and replaced when successful
   mCurFeat = &f;
@@ -2114,7 +2113,7 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
   {
     if ( isObstacle )
     {
-      registerObstacleFeature( f, context, QString(), labelFeature, obstacleGeometry );
+      registerObstacleFeature( f, context, labelFeature, obstacleGeometry );
     }
     return;
   }
@@ -2285,6 +2284,7 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
 
   // calculate rest of font attributes and store any data defined values
   // this is done here for later use in making label backgrounds part of collision management (when implemented)
+  labelFont.setCapitalization( QFont::MixedCase ); // reset this - we don't use QFont's handling as it breaks with curved labels
   parseTextStyle( labelFont, fontunits, context );
   parseTextFormatting( context );
   parseTextBuffer( context );
@@ -2317,6 +2317,41 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
     const QVariant &v = f.attribute( fieldIndex );
     labelText = v.isNull() ? "" : v.toString();
   }
+
+  // apply capitalization
+  QgsStringUtils::Capitalization capitalization = QgsStringUtils::MixedCase;
+  // maintain API - capitalization may have been set in textFont
+  if ( textFont.capitalization() != QFont::MixedCase )
+  {
+    capitalization = static_cast< QgsStringUtils::Capitalization >( textFont.capitalization() );
+  }
+  // data defined font capitalization?
+  if ( dataDefinedEvaluate( QgsPalLayerSettings::FontCase, exprVal, &context.expressionContext() ) )
+  {
+    QString fcase = exprVal.toString().trimmed();
+    QgsDebugMsgLevel( QString( "exprVal FontCase:%1" ).arg( fcase ), 4 );
+
+    if ( !fcase.isEmpty() )
+    {
+      if ( fcase.compare( "NoChange", Qt::CaseInsensitive ) == 0 )
+      {
+        capitalization = QgsStringUtils::MixedCase;
+      }
+      else if ( fcase.compare( "Upper", Qt::CaseInsensitive ) == 0 )
+      {
+        capitalization = QgsStringUtils::AllUppercase;
+      }
+      else if ( fcase.compare( "Lower", Qt::CaseInsensitive ) == 0 )
+      {
+        capitalization = QgsStringUtils::AllLowercase;
+      }
+      else if ( fcase.compare( "Capitalize", Qt::CaseInsensitive ) == 0 )
+      {
+        capitalization = QgsStringUtils::ForceFirstLetterToCapital;
+      }
+    }
+  }
+  labelText = QgsStringUtils::capitalize( labelText, capitalization );
 
   // data defined format numbers?
   bool formatnum = formatNumbers;
@@ -2438,6 +2473,20 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
     doClip = true;
   }
 
+  // if using fitInPolygonOnly option, generate the permissible zone (must happen before geometry is modified - eg
+  // as a result of using perimeter based labeling and the geometry is converted to a boundary)
+  QgsGeometry permissibleZone;
+  if ( geom->type() == QGis::Polygon && fitInPolygonOnly )
+  {
+    permissibleZone = *geom;
+    if ( QgsPalLabeling::geometryRequiresPreparation( &permissibleZone, context, ct, doClip ? extentGeom : nullptr ) )
+    {
+      QgsGeometry* preparedZone = QgsPalLabeling::prepareGeometry( &permissibleZone, context, ct, doClip ? extentGeom : nullptr );
+      permissibleZone = *preparedZone;
+      delete preparedZone;
+    }
+  }
+
   const GEOSGeometry* geos_geom = nullptr;
   const QgsGeometry* preparedGeom = geom;
   QScopedPointer<QgsGeometry> scopedPreparedGeom;
@@ -2500,7 +2549,8 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
   }
 
   GEOSGeometry* geos_geom_clone;
-  if ( GEOSGeomTypeId_r( QgsGeometry::getGEOSHandler(), geos_geom ) == GEOS_POLYGON && repeatDistance > 0 && placement == Line )
+  GEOSGeomTypes geomType = ( GEOSGeomTypes ) GEOSGeomTypeId_r( QgsGeometry::getGEOSHandler(), geos_geom );
+  if (( geomType == GEOS_POLYGON || geomType == GEOS_MULTIPOLYGON ) && repeatDistance > 0 && placement == Line )
   {
     geos_geom_clone = GEOSBoundary_r( QgsGeometry::getGEOSHandler(), geos_geom );
   }
@@ -2734,35 +2784,14 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
           ydiff = yd;
         }
 
-        //project xPos and yPos from layer to map CRS
-        double z = 0;
-        if ( ct )
+        //project xPos and yPos from layer to map CRS, handle rotation
+        QgsGeometry ddPoint( new QgsPointV2( xPos, yPos ) );
+        if ( QgsPalLabeling::geometryRequiresPreparation( &ddPoint, context, ct ) )
         {
-          try
-          {
-            ct->transformInPlace( xPos, yPos, z );
-          }
-          catch ( QgsCsException &e )
-          {
-            Q_UNUSED( e );
-            QgsDebugMsgLevel( QString( "Ignoring feature %1 due transformation exception on data-defined position" ).arg( f.id() ), 4 );
-            return;
-          }
-        }
-
-        //rotate position with map if data-defined
-        if ( dataDefinedPosition && m2p.mapRotation() )
-        {
-          const QgsPoint& center = context.extent().center();
-          QTransform t = QTransform::fromTranslate( center.x(), center.y() );
-          t.rotate( -m2p.mapRotation() );
-          t.translate( -center.x(), -center.y() );
-          qreal xPosR, yPosR;
-          qreal xPos_qreal = xPos, yPos_qreal = yPos;
-          t.map( xPos_qreal, yPos_qreal, &xPosR, &yPosR );
-          xPos = xPosR;
-          yPos = yPosR;
-
+          QgsGeometry* newPoint = QgsPalLabeling::prepareGeometry( &ddPoint, context, ct );
+          xPos = static_cast< QgsPointV2* >( newPoint->geometry() )->x();
+          yPos = static_cast< QgsPointV2* >( newPoint->geometry() )->y();
+          delete newPoint;
         }
 
         xPos += xdiff;
@@ -2835,6 +2864,7 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
   ( *labelFeature )->setAlwaysShow( alwaysShow );
   ( *labelFeature )->setRepeatDistance( repeatDist );
   ( *labelFeature )->setLabelText( labelText );
+  ( *labelFeature )->setPermissibleZone( permissibleZone );
   if ( geosObstacleGeomClone )
   {
     ( *labelFeature )->setObstacleGeometry( geosObstacleGeomClone );
@@ -2900,7 +2930,7 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
     {
       distance *= vectorScaleFactor;
     }
-    double d = qAbs( ptOne.x() - ptZero.x() ) * distance;
+    double d = sqrt( ptOne.sqrDist( ptZero ) ) * distance;
     ( *labelFeature )->setDistLabel( d );
   }
 
@@ -2966,10 +2996,8 @@ void QgsPalLayerSettings::registerFeature( QgsFeature& f, QgsRenderContext &cont
   lf->setDataDefinedValues( dataDefinedValues );
 }
 
-void QgsPalLayerSettings::registerObstacleFeature( QgsFeature& f, QgsRenderContext &context, const QString& dxfLayer, QgsLabelFeature** obstacleFeature, QgsGeometry* obstacleGeometry )
+void QgsPalLayerSettings::registerObstacleFeature( QgsFeature& f, QgsRenderContext &context, QgsLabelFeature** obstacleFeature, QgsGeometry* obstacleGeometry )
 {
-  Q_UNUSED( dxfLayer ); // now handled in QgsDxfLabelProvider
-
   mCurFeat = &f;
 
   const QgsGeometry* geom = nullptr;
@@ -3303,7 +3331,6 @@ void QgsPalLayerSettings::parseTextStyle( QFont& labelFont,
     // copy over existing font settings
     //newFont = newFont.resolve( labelFont ); // should work, but let's be sure what's being copied
     newFont.setPixelSize( labelFont.pixelSize() );
-    newFont.setCapitalization( labelFont.capitalization() );
     newFont.setUnderline( labelFont.underline() );
     newFont.setStrikeOut( labelFont.strikeOut() );
     newFont.setWordSpacing( labelFont.wordSpacing() );
@@ -3324,7 +3351,7 @@ void QgsPalLayerSettings::parseTextStyle( QFont& labelFont,
       wordspace = wspacing;
     }
   }
-  labelFont.setWordSpacing( sizeToPixel( wordspace, context, fontunits, false, fontSizeMapUnitScale ) );
+  labelFont.setWordSpacing( scaleToPixelContext( wordspace, context, fontunits, false, fontSizeMapUnitScale ) );
 
   // data defined letter spacing?
   double letterspace = labelFont.letterSpacing();
@@ -3338,40 +3365,7 @@ void QgsPalLayerSettings::parseTextStyle( QFont& labelFont,
       letterspace = lspacing;
     }
   }
-  labelFont.setLetterSpacing( QFont::AbsoluteSpacing, sizeToPixel( letterspace, context, fontunits, false, fontSizeMapUnitScale ) );
-
-  // data defined font capitalization?
-  QFont::Capitalization fontcaps = labelFont.capitalization();
-  if ( dataDefinedEvaluate( QgsPalLayerSettings::FontCase, exprVal, &context.expressionContext() ) )
-  {
-    QString fcase = exprVal.toString().trimmed();
-    QgsDebugMsgLevel( QString( "exprVal FontCase:%1" ).arg( fcase ), 4 );
-
-    if ( !fcase.isEmpty() )
-    {
-      if ( fcase.compare( "NoChange", Qt::CaseInsensitive ) == 0 )
-      {
-        fontcaps = QFont::MixedCase;
-      }
-      else if ( fcase.compare( "Upper", Qt::CaseInsensitive ) == 0 )
-      {
-        fontcaps = QFont::AllUppercase;
-      }
-      else if ( fcase.compare( "Lower", Qt::CaseInsensitive ) == 0 )
-      {
-        fontcaps = QFont::AllLowercase;
-      }
-      else if ( fcase.compare( "Capitalize", Qt::CaseInsensitive ) == 0 )
-      {
-        fontcaps = QFont::Capitalize;
-      }
-
-      if ( fontcaps != labelFont.capitalization() )
-      {
-        labelFont.setCapitalization( fontcaps );
-      }
-    }
-  }
+  labelFont.setLetterSpacing( QFont::AbsoluteSpacing, scaleToPixelContext( letterspace, context, fontunits, false, fontSizeMapUnitScale ) );
 
   // data defined strikeout font style?
   if ( dataDefinedEvaluate( QgsPalLayerSettings::Strikeout, exprVal, &context.expressionContext(), labelFont.strikeOut() ) )
@@ -3963,9 +3957,8 @@ int QgsPalLabeling::addDiagramLayer( QgsVectorLayer* layer, const QgsDiagramLaye
   return 0;
 }
 
-void QgsPalLabeling::registerFeature( const QString& layerID, QgsFeature& f, QgsRenderContext &context, const QString& dxfLayer )
+void QgsPalLabeling::registerFeature( const QString& layerID, QgsFeature& f, QgsRenderContext &context )
 {
-  Q_UNUSED( dxfLayer ); // now handled by QgsDxfLabelProvider
   if ( QgsVectorLayerLabelProvider* provider = mLabelProviders.value( layerID, nullptr ) )
     provider->registerFeature( f, context );
 }

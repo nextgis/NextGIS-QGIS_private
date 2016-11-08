@@ -54,6 +54,9 @@ class CORE_EXPORT QgsVectorFieldSymbolLayer: public QgsMarkerSymbolLayerV2
     bool setSubSymbol( QgsSymbolV2* symbol ) override;
     QgsSymbolV2* subSymbol() override { return mLineSymbol; }
 
+    void setColor( const QColor& color ) override;
+    virtual QColor color() const override;
+
     void renderPoint( QPointF point, QgsSymbolV2RenderContext& context ) override;
     void startRender( QgsSymbolV2RenderContext& context ) override;
     void stopRender( QgsSymbolV2RenderContext& context ) override;
@@ -61,6 +64,7 @@ class CORE_EXPORT QgsVectorFieldSymbolLayer: public QgsMarkerSymbolLayerV2
     QgsVectorFieldSymbolLayer* clone() const override;
     QgsStringMap properties() const override;
 
+    //! Writes the SLD element following the SLD v1.1 specs
     void toSld( QDomDocument& doc, QDomElement &element, const QgsStringMap& props ) const override;
 
     void drawPreviewIcon( QgsSymbolV2RenderContext& context, QSize size ) override;

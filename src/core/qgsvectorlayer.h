@@ -559,6 +559,11 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
       @returns true if join was found and successfully removed */
     bool removeJoin( const QString& joinLayerId );
 
+    /**
+     * Acccessor to the join buffer object
+     * @note added 2.14.7
+     */
+    QgsVectorLayerJoinBuffer* joinBuffer() { return mJoinBuffer; }
     const QList<QgsVectorJoinInfo> vectorJoins() const;
 
     /**
@@ -840,7 +845,33 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
      */
     bool writeSymbology( QDomNode& node, QDomDocument& doc, QString& errorMessage ) const override;
 
+
+    /**
+     * Writes the symbology of the layer into the document provided in SLD 1.1 format
+     * @param node the node that will have the style element added to it.
+     * @param doc the document that will have the QDomNode added.
+     * @param errorMessage reference to string that will be updated with any error messages
+     * @return true in case of success
+     */
     bool writeSld( QDomNode& node, QDomDocument& doc, QString& errorMessage ) const;
+
+    /**
+     * Writes the symbology of the layer into the document provided in SLD 1.1 format
+     * @param node the node that will have the style element added to it.
+     * @param doc the document that will have the QDomNode added.
+     * @param errorMessage reference to string that will be updated with any error messages
+     * @param props a open ended set of properties that can drive/inform the SLD encoding
+     * @return true in case of success
+     */
+    bool writeSld( QDomNode& node, QDomDocument& doc, QString& errorMessage, const QgsStringMap& props ) const;
+
+    /**
+     * Read the symbology of the layer according to the information contained in
+     * the UserStyle element of a SLD style document
+     * @param node the node that have the style element in it.
+     * @param errorMessage reference to string that will be updated with any error messages
+     * @return true in case of success
+     */
     bool readSld( const QDomNode& node, QString& errorMessage ) override;
 
     /**
@@ -1590,17 +1621,35 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
     /** Caches joined attributes if required (and not already done) */
     void createJoinCaches();
 
-    /** Returns unique values for column
+    /** Calculates a list of unique values contained within an attribute in the layer. Note that
+     * in some circumstances when unsaved changes are present for the layer then the returned list
+     * may contain outdated values (for instance when the attribute value in a saved feature has
+     * been changed inside the edit buffer then the previous saved value will be included in the
+     * returned list).
      * @param index column index for attribute
      * @param uniqueValues out: result list
-     * @param limit maximum number of values to return (-1 if unlimited)
+     * @param limit maximum number of values to return (or -1 if unlimited)
+     * @see minimumValue()
+     * @see maximumValue()
      */
     void uniqueValues( int index, QList<QVariant> &uniqueValues, int limit = -1 );
 
-    /** Returns minimum value for an attribute column or invalid variant in case of error */
+    /** Returns the minimum value for an attribute column or an invalid variant in case of error.
+     * Note that in some circumstances when unsaved changes are present for the layer then the
+     * returned value may be outdated (for instance when the attribute value in a saved feature has
+     * been changed inside the edit buffer then the previous saved value may be returned as the minimum).
+     * @see maximumValue()
+     * @see uniqueValues()
+     */
     QVariant minimumValue( int index );
 
-    /** Returns maximum value for an attribute column or invalid variant in case of error */
+    /** Returns the maximum value for an attribute column or an invalid variant in case of error.
+     * Note that in some circumstances when unsaved changes are present for the layer then the
+     * returned value may be outdated (for instance when the attribute value in a saved feature has
+     * been changed inside the edit buffer then the previous saved value may be returned as the maximum).
+     * @see minimumValue()
+     * @see uniqueValues()
+     */
     QVariant maximumValue( int index );
 
     /** Fetches all values from a specified field name or expression.

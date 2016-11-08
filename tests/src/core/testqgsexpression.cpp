@@ -299,6 +299,20 @@ class TestQgsExpression: public QObject
       QTest::newRow( "'nan'='x'" ) << "'nan'='x'" << false << QVariant( 0 );
       QTest::newRow( "'inf'='inf'" ) << "'inf'='inf'" << false << QVariant( 1 );
       QTest::newRow( "'inf'='x'" ) << "'inf'='x'" << false << QVariant( 0 );
+      QTest::newRow( "'1.1'='1.1'" ) << "'1.1'='1.1'" << false << QVariant( 1 );
+      QTest::newRow( "'1.1'!='1.1'" ) << "'1.1'!='1.1'" << false << QVariant( 0 );
+      QTest::newRow( "'1.1'='1.10'" ) << "'1.1'='1.10'" << false << QVariant( 0 );
+      QTest::newRow( "'1.1'!='1.10'" ) << "'1.1'!='1.10'" << false << QVariant( 1 );
+      QTest::newRow( "1.1=1.10" ) << "1.1=1.10" << false << QVariant( 1 );
+      QTest::newRow( "1.1 != 1.10" ) << "1.1 != 1.10" << false << QVariant( 0 );
+      QTest::newRow( "'1.1'=1.1" ) << "'1.1'=1.1" << false << QVariant( 1 );
+      QTest::newRow( "'1.10'=1.1" ) << "'1.10'=1.1" << false << QVariant( 1 );
+      QTest::newRow( "1.1='1.10'" ) << "1.1='1.10'" << false << QVariant( 1 );
+      QTest::newRow( "'1.1'='1.10000'" ) << "'1.1'='1.10000'" << false << QVariant( 0 );
+      QTest::newRow( "'1E-23'='1E-23'" ) << "'1E-23'='1E-23'" << false << QVariant( 1 );
+      QTest::newRow( "'1E-23'!='1E-23'" ) << "'1E-23'!='1E-23'" << false << QVariant( 0 );
+      QTest::newRow( "'1E-23'='2E-23'" ) << "'1E-23'='2E-23'" << false << QVariant( 0 );
+      QTest::newRow( "'1E-23'!='2E-23'" ) << "'1E-23'!='2E-23'" << false << QVariant( 1 );
 
       // is, is not
       QTest::newRow( "is null,null" ) << "null is null" << false << QVariant( 1 );
@@ -309,6 +323,10 @@ class TestQgsExpression: public QObject
       QTest::newRow( "is not int" ) << "1 is not 1" << false << QVariant( 0 );
       QTest::newRow( "is text" ) << "'x' is 'y'" << false << QVariant( 0 );
       QTest::newRow( "is not text" ) << "'x' is not 'y'" << false << QVariant( 1 );
+      QTest::newRow( "'1.1' is '1.10'" ) << "'1.1' is '1.10'" << false << QVariant( 0 );
+      QTest::newRow( "'1.1' is '1.10000'" ) << "'1.1' is '1.10000'" << false << QVariant( 0 );
+      QTest::newRow( "1.1 is '1.10'" ) << "1.1 is '1.10'" << false << QVariant( 1 );
+      QTest::newRow( "'1.10' is 1.1" ) << "'1.10' is 1.1" << false << QVariant( 1 );
 
       //  logical
       QTest::newRow( "T or F" ) << "1=1 or 2=3" << false << QVariant( 1 );
@@ -336,9 +354,13 @@ class TestQgsExpression: public QObject
 
       // regexp, like
       QTest::newRow( "like 1" ) << "'hello' like '%ll_'" << false << QVariant( 1 );
-      QTest::newRow( "like 2" ) << "'hello' like 'lo'" << false << QVariant( 0 );
-      QTest::newRow( "like 3" ) << "'hello' like '%LO'" << false << QVariant( 0 );
+      QTest::newRow( "like 2" ) << "'hello' like '_el%'" << false << QVariant( 1 );
+      QTest::newRow( "like 3" ) << "'hello' like 'lo'" << false << QVariant( 0 );
+      QTest::newRow( "like 4" ) << "'hello' like '%LO'" << false << QVariant( 0 );
       QTest::newRow( "ilike" ) << "'hello' ilike '%LO'" << false << QVariant( 1 );
+      // the \\\\ is like \\ in the interface
+      QTest::newRow( "like escape 1" ) << "'1%' like '1\\\\%'" << false << QVariant( 1 );
+      QTest::newRow( "like escape 2" ) << "'1_' like '1\\\\%'" << false << QVariant( 0 );
       QTest::newRow( "regexp 1" ) << "'hello' ~ 'll'" << false << QVariant( 1 );
       QTest::newRow( "regexp 2" ) << "'hello' ~ '^ll'" << false << QVariant( 0 );
       QTest::newRow( "regexp 3" ) << "'hello' ~ 'llo$'" << false << QVariant( 1 );
@@ -596,6 +618,7 @@ class TestQgsExpression: public QObject
       QTest::newRow( "shortest_line geom" ) << "geom_to_wkt(shortest_line( geom_from_wkt('LineString( 1 1, 5 1, 5 5 )'),geom_from_wkt('Point( 6 3 )')))" << false << QVariant( "LineString (5 3, 6 3)" );
       QTest::newRow( "shortest_line not geom" ) << "shortest_line('g','a')" << true << QVariant();
       QTest::newRow( "shortest_line null" ) << "shortest_line(NULL,NULL)" << false << QVariant();
+      QTest::newRow( "transform invalid" ) << "transform(make_point(0,0),'EPSG:4326','EPSG:28356')" << false << QVariant();
 
       // string functions
       QTest::newRow( "lower" ) << "lower('HeLLo')" << false << QVariant( "hello" );

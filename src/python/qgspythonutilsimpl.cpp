@@ -202,13 +202,6 @@ bool QgsPythonUtilsImpl::checkQgisUser()
   return true;
 }
 
-void QgsPythonUtilsImpl::doUserImports()
-{
-
-  QString startuppath = homePythonPath() + " + \"/startup.py\"";
-  runString( "if os.path.exists(" + startuppath + "): from startup import *\n" );
-}
-
 void QgsPythonUtilsImpl::initPython( QgisInterface* interface )
 {
   init();
@@ -224,7 +217,6 @@ void QgsPythonUtilsImpl::initPython( QgisInterface* interface )
     exitPython();
     return;
   }
-  doUserImports();
   finish();
 }
 
@@ -250,7 +242,6 @@ void QgsPythonUtilsImpl::initServerPython( QgsServerInterface* interface )
   // This is the other main difference with initInterface() for desktop plugins
   runString( "qgis.utils.initServerInterface(" + QString::number(( unsigned long ) interface ) + ')' );
 
-  doUserImports();
   finish();
 }
 
@@ -300,7 +291,7 @@ bool QgsPythonUtilsImpl::runStringUnsafe( const QString& command, bool single )
   // (non-unicode strings can be mangled)
   PyObject* obj = PyRun_String( command.toUtf8().data(), single ? Py_single_input : Py_file_input, mMainDict, mMainDict );
   bool res = nullptr == PyErr_Occurred();
-  Py_DECREF( obj );
+  Py_XDECREF( obj );
 
   // we are done calling python API, release global interpreter lock
   PyGILState_Release( gstate );

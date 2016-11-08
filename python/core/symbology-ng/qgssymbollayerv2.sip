@@ -107,6 +107,7 @@ class QgsSymbolLayerV2
      */
     virtual QgsSymbolLayerV2* clone() const = 0 /Factory/;
 
+    //! Writes the SLD element following the SLD v1.1 specs
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const;
 
     virtual QString ogrFeatureStyle( double mmScaleFactor, double mapUnitScaleFactor ) const;
@@ -252,17 +253,13 @@ class QgsSymbolLayerV2
      */
     virtual QVariant evaluateDataDefinedProperty( const QString& property, const QgsSymbolV2RenderContext& context, const QVariant& defaultVal = QVariant(), bool *ok = 0 ) const;
 
-    virtual bool writeDxf( QgsDxfExport& e,
-                           double mmMapUnitScaleFactor,
-                           const QString& layerName,
-                           QgsSymbolV2RenderContext* context,
-                           const QgsFeature* f,
-                           QPointF shift = QPointF( 0.0, 0.0 ) ) const;
+    virtual bool writeDxf( QgsDxfExport &e, double mmMapUnitScaleFactor, const QString &layerName, QgsSymbolV2RenderContext &context, QPointF shift = QPointF( 0.0, 0.0 ) ) const;
 
     virtual double dxfWidth( const QgsDxfExport& e, QgsSymbolV2RenderContext& context ) const;
     virtual double dxfOffset( const QgsDxfExport& e, QgsSymbolV2RenderContext& context ) const;
 
     virtual QColor dxfColor( QgsSymbolV2RenderContext& context ) const;
+    virtual double dxfAngle( QgsSymbolV2RenderContext& context ) const;
 
     virtual QVector<qreal> dxfCustomDashPattern( QgsSymbolV2::OutputUnit& unit ) const;
     virtual Qt::PenStyle dxfPenStyle() const;
@@ -381,6 +378,7 @@ class QgsMarkerSymbolLayerV2 : QgsSymbolLayerV2
     void setOffset( QPointF offset );
     QPointF offset();
 
+    //! Writes the SLD element following the SLD v1.1 specs
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const;
 
     virtual void writeSldMarker( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const;

@@ -1744,6 +1744,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     bool gestureEvent( QGestureEvent *event );
     void tapAndHoldTriggered( QTapAndHoldGesture *gesture );
 #endif
+
+    friend class TestQgisAppPython;
 };
 
 #ifdef ANDROID

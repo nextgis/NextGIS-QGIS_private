@@ -43,10 +43,6 @@ for key, value in wkbTypeGroups.items():
     for const in value:
         wkbTypeGroups[const] = key
 
-GEOM_25D = [QGis.WKBPoint25D, QGis.WKBLineString25D, QGis.WKBPolygon25D,
-            QGis.WKBMultiPoint25D, QGis.WKBMultiLineString25D,
-            QGis.WKBMultiPolygon25D]
-
 
 class Intersection(GeoAlgorithm):
 
@@ -68,16 +64,11 @@ class Intersection(GeoAlgorithm):
             self.getParameterValue(self.INPUT))
         vlayerB = dataobjects.getObjectFromUri(
             self.getParameterValue(self.INPUT2))
-        vproviderA = vlayerA.dataProvider()
 
-        geomType = vproviderA.geometryType()
-        if geomType in GEOM_25D:
-            raise GeoAlgorithmExecutionException(
-                self.tr('Input layer has unsupported geometry type {}').format(geomType))
-
+        geomType = QGis.multiType(vlayerA.wkbType())
         fields = vector.combineVectorFields(vlayerA, vlayerB)
         writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(fields,
-                                                                     geomType, vproviderA.crs())
+                                                                     geomType, vlayerA.crs())
         outFeat = QgsFeature()
         index = vector.spatialindex(vlayerB)
         selectionA = vector.features(vlayerA)
@@ -96,8 +87,10 @@ class Intersection(GeoAlgorithm):
                     int_geom = QgsGeometry(geom.intersection(tmpGeom))
                     if int_geom.wkbType() == QGis.WKBUnknown or QgsWKBTypes.flatType(int_geom.geometry().wkbType()) == QgsWKBTypes.GeometryCollection:
                         int_com = geom.combine(tmpGeom)
-                        int_sym = geom.symDifference(tmpGeom)
-                        int_geom = QgsGeometry(int_com.difference(int_sym))
+                        int_geom = QgsGeometry()
+                        if int_com is not None:
+                            int_sym = geom.symDifference(tmpGeom)
+                            int_geom = QgsGeometry(int_com.difference(int_sym))
                     if int_geom.isGeosEmpty() or not int_geom.isGeosValid():
                         ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
                                                self.tr('GEOS geoprocessing error: One or '

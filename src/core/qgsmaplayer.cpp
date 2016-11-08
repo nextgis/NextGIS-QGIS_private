@@ -48,6 +48,7 @@
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsmaplayerregistry.h"
+#include "qgsxmlutils.h"
 
 
 QgsMapLayer::QgsMapLayer( QgsMapLayer::LayerType type,
@@ -425,6 +426,12 @@ bool QgsMapLayer::readLayerXML( const QDomElement& layerElement )
   setMinimumScale( layerElement.attribute( "minimumScale" ).toFloat() );
   setMaximumScale( layerElement.attribute( "maximumScale" ).toFloat() );
 
+  QDomNode extentNode = layerElement.namedItem( "extent" );
+  if ( !extentNode.isNull() )
+  {
+    setExtent( QgsXmlUtils::readRectangle( extentNode.toElement() ) );
+  }
+
   // set name
   mnl = layerElement.namedItem( "layername" );
   mne = mnl.toElement();
@@ -530,6 +537,11 @@ bool QgsMapLayer::writeLayerXML( QDomElement& layerElement, QDomDocument& docume
   layerElement.setAttribute( "hasScaleBasedVisibilityFlag", hasScaleBasedVisibility() ? 1 : 0 );
   layerElement.setAttribute( "minimumScale", QString::number( minimumScale() ) );
   layerElement.setAttribute( "maximumScale", QString::number( maximumScale() ) );
+
+  if ( !mExtent.isNull() )
+  {
+    layerElement.appendChild( QgsXmlUtils::writeRectangle( mExtent, document ) );
+  }
 
   // ID
   QDomElement layerId = document.createElement( "id" );
@@ -1440,7 +1452,6 @@ void QgsMapLayer::exportSldStyle( QDomDocument &doc, QString &errorMsg )
   // Create the root element
   QDomElement root = myDocument.createElementNS( "http://www.opengis.net/sld", "StyledLayerDescriptor" );
   root.setAttribute( "version", "1.1.0" );
-  root.setAttribute( "units", "mm" ); // default qgsmaprenderer is Millimeters
   root.setAttribute( "xsi:schemaLocation", "http://www.opengis.net/sld http://schemas.opengis.net/sld/1.1.0/StyledLayerDescriptor.xsd" );
   root.setAttribute( "xmlns:ogc", "http://www.opengis.net/ogc" );
   root.setAttribute( "xmlns:se", "http://www.opengis.net/se" );
@@ -1460,7 +1471,13 @@ void QgsMapLayer::exportSldStyle( QDomDocument &doc, QString &errorMsg )
     return;
   }
 
-  if ( !vlayer->writeSld( namedLayerNode, myDocument, errorMsg ) )
+  QgsStringMap props;
+  if ( hasScaleBasedVisibility() )
+  {
+    props[ "scaleMinDenom" ] = QString::number( mMinScale );
+    props[ "scaleMaxDenom" ] = QString::number( mMaxScale );
+  }
+  if ( !vlayer->writeSld( namedLayerNode, myDocument, errorMsg, props ) )
   {
     errorMsg = tr( "Could not save symbology because:\n%1" ).arg( errorMsg );
     return;

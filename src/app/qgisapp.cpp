@@ -1924,6 +1924,7 @@ void QgisApp::createToolBars()
   bt->addActions( selectActions );
   bt->setDefaultAction( mActionSelectByExpression );
   QAction* selectionAction = mAttributesToolBar->insertWidget( mActionDeselectAll, bt );
+  selectionAction->setObjectName( "ActionSelection" );
 
   // select tool button
 
@@ -2760,7 +2761,7 @@ void QgisApp::toggleLogMessageIcon( bool hasLogMessage )
 
 void QgisApp::openMessageLog()
 {
-  mMessageButton->toggle();
+  mMessageButton->setChecked( true );
 }
 
 void QgisApp::addUserInputWidget( QWidget *widget )
@@ -3400,6 +3401,7 @@ bool QgisApp::addVectorLayers( const QStringList &theLayerQStringList, const QSt
     bool ok;
     l->loadDefaultStyle( ok );
   }
+  activateDeactivateLayerRelatedActions( activeLayer() );
 
   // Only update the map if we frozen in this method
   // Let the caller do it otherwise
@@ -5650,110 +5652,118 @@ void QgisApp::saveAsRasterFile()
                                 mMapCanvas->extent(), rasterLayer->crs(),
                                 mMapCanvas->mapSettings().destinationCrs(),
                                 this );
-  if ( d.exec() == QDialog::Accepted )
+  if ( d.exec() == QDialog::Rejected )
+    return;
+
+  QSettings settings;
+  settings.setValue( "/UI/lastRasterFileDir", QFileInfo( d.outputFileName() ).absolutePath() );
+
+  QgsRasterFileWriter fileWriter( d.outputFileName() );
+  if ( d.tileMode() )
   {
-    QSettings settings;
-    settings.setValue( "/UI/lastRasterFileDir", QFileInfo( d.outputFileName() ).absolutePath() );
+    fileWriter.setTiledMode( true );
+    fileWriter.setMaxTileWidth( d.maximumTileSizeX() );
+    fileWriter.setMaxTileHeight( d.maximumTileSizeY() );
+  }
 
-    QgsRasterFileWriter fileWriter( d.outputFileName() );
-    if ( d.tileMode() )
+  QProgressDialog pd( nullptr, tr( "Abort..." ), 0, 0 );
+  // Show the dialo immediately because cloning pipe can take some time (WCS)
+  pd.setLabelText( tr( "Reading raster" ) );
+  pd.setWindowTitle( tr( "Saving raster" ) );
+  pd.show();
+  pd.setWindowModality( Qt::WindowModal );
+
+  // TODO: show error dialogs
+  // TODO: this code should go somewhere else, but probably not into QgsRasterFileWriter
+  // clone pipe/provider is not really necessary, ready for threads
+  QScopedPointer<QgsRasterPipe> pipe( nullptr );
+
+  if ( d.mode() == QgsRasterLayerSaveAsDialog::RawDataMode )
+  {
+    QgsDebugMsg( "Writing raw data" );
+    //QgsDebugMsg( QString( "Writing raw data" ).arg( pos ) );
+    pipe.reset( new QgsRasterPipe() );
+    if ( !pipe->set( rasterLayer->dataProvider()->clone() ) )
     {
-      fileWriter.setTiledMode( true );
-      fileWriter.setMaxTileWidth( d.maximumTileSizeX() );
-      fileWriter.setMaxTileHeight( d.maximumTileSizeY() );
-    }
-
-    QProgressDialog pd( nullptr, tr( "Abort..." ), 0, 0 );
-    // Show the dialo immediately because cloning pipe can take some time (WCS)
-    pd.setLabelText( tr( "Reading raster" ) );
-    pd.setWindowTitle( tr( "Saving raster" ) );
-    pd.show();
-    pd.setWindowModality( Qt::WindowModal );
-
-    // TODO: show error dialogs
-    // TODO: this code should go somewhere else, but probably not into QgsRasterFileWriter
-    // clone pipe/provider is not really necessary, ready for threads
-    QScopedPointer<QgsRasterPipe> pipe( nullptr );
-
-    if ( d.mode() == QgsRasterLayerSaveAsDialog::RawDataMode )
-    {
-      QgsDebugMsg( "Writing raw data" );
-      //QgsDebugMsg( QString( "Writing raw data" ).arg( pos ) );
-      pipe.reset( new QgsRasterPipe() );
-      if ( !pipe->set( rasterLayer->dataProvider()->clone() ) )
-      {
-        QgsDebugMsg( "Cannot set pipe provider" );
-        return;
-      }
-
-      QgsRasterNuller *nuller = new QgsRasterNuller();
-      for ( int band = 1; band <= rasterLayer->dataProvider()->bandCount(); band ++ )
-      {
-        nuller->setNoData( band, d.noData() );
-      }
-      if ( !pipe->insert( 1, nuller ) )
-      {
-        QgsDebugMsg( "Cannot set pipe nuller" );
-        return;
-      }
-
-      // add projector if necessary
-      if ( d.outputCrs() != rasterLayer->crs() )
-      {
-        QgsRasterProjector * projector = new QgsRasterProjector;
-        projector->setCRS( rasterLayer->crs(), d.outputCrs() );
-        if ( !pipe->insert( 2, projector ) )
-        {
-          QgsDebugMsg( "Cannot set pipe projector" );
-          return;
-        }
-      }
-    }
-    else // RenderedImageMode
-    {
-      // clone the whole pipe
-      QgsDebugMsg( "Writing rendered image" );
-      pipe.reset( new QgsRasterPipe( *rasterLayer->pipe() ) );
-      QgsRasterProjector *projector = pipe->projector();
-      if ( !projector )
-      {
-        QgsDebugMsg( "Cannot get pipe projector" );
-        return;
-      }
-      projector->setCRS( rasterLayer->crs(), d.outputCrs() );
-    }
-
-    if ( !pipe->last() )
-    {
+      QgsDebugMsg( "Cannot set pipe provider" );
       return;
     }
-    fileWriter.setCreateOptions( d.createOptions() );
 
-    fileWriter.setBuildPyramidsFlag( d.buildPyramidsFlag() );
-    fileWriter.setPyramidsList( d.pyramidsList() );
-    fileWriter.setPyramidsResampling( d.pyramidsResamplingMethod() );
-    fileWriter.setPyramidsFormat( d.pyramidsFormat() );
-    fileWriter.setPyramidsConfigOptions( d.pyramidsConfigOptions() );
-
-    QgsRasterFileWriter::WriterError err = fileWriter.writeRaster( pipe.data(), d.nColumns(), d.nRows(), d.outputRectangle(), d.outputCrs(), &pd );
-    if ( err != QgsRasterFileWriter::NoError )
+    QgsRasterNuller *nuller = new QgsRasterNuller();
+    for ( int band = 1; band <= rasterLayer->dataProvider()->bandCount(); band ++ )
     {
-      QMessageBox::warning( this, tr( "Error" ),
-                            tr( "Cannot write raster error code: %1" ).arg( err ),
-                            QMessageBox::Ok );
-
+      nuller->setNoData( band, d.noData() );
     }
-    else
+    if ( !pipe->insert( 1, nuller ) )
     {
-      if ( d.addToCanvas() )
+      QgsDebugMsg( "Cannot set pipe nuller" );
+      return;
+    }
+
+    // add projector if necessary
+    if ( d.outputCrs() != rasterLayer->crs() )
+    {
+      QgsRasterProjector * projector = new QgsRasterProjector;
+      projector->setCRS( rasterLayer->crs(), d.outputCrs() );
+      if ( !pipe->insert( 2, projector ) )
       {
-        addRasterLayers( QStringList( d.outputFileName() ) );
+        QgsDebugMsg( "Cannot set pipe projector" );
+        return;
       }
-      emit layerSavedAs( rasterLayer, d.outputFileName() );
-      messageBar()->pushMessage( tr( "Saving done" ),
-                                 tr( "Export to raster file has been completed" ),
-                                 QgsMessageBar::INFO, messageTimeout() );
     }
+  }
+  else // RenderedImageMode
+  {
+    // clone the whole pipe
+    QgsDebugMsg( "Writing rendered image" );
+    pipe.reset( new QgsRasterPipe( *rasterLayer->pipe() ) );
+    QgsRasterProjector *projector = pipe->projector();
+    if ( !projector )
+    {
+      QgsDebugMsg( "Cannot get pipe projector" );
+      return;
+    }
+    projector->setCRS( rasterLayer->crs(), d.outputCrs() );
+  }
+
+  if ( !pipe->last() )
+  {
+    return;
+  }
+  fileWriter.setCreateOptions( d.createOptions() );
+
+  fileWriter.setBuildPyramidsFlag( d.buildPyramidsFlag() );
+  fileWriter.setPyramidsList( d.pyramidsList() );
+  fileWriter.setPyramidsResampling( d.pyramidsResamplingMethod() );
+  fileWriter.setPyramidsFormat( d.pyramidsFormat() );
+  fileWriter.setPyramidsConfigOptions( d.pyramidsConfigOptions() );
+
+  QgsRasterFileWriter::WriterError err = fileWriter.writeRaster( pipe.data(), d.nColumns(), d.nRows(), d.outputRectangle(), d.outputCrs(), &pd );
+  if ( err != QgsRasterFileWriter::NoError )
+  {
+    QMessageBox::warning( this, tr( "Error" ),
+                          tr( "Cannot write raster error code: %1" ).arg( err ),
+                          QMessageBox::Ok );
+
+  }
+  else
+  {
+    QString fileName( d.outputFileName() );
+    if ( d.tileMode() )
+    {
+      QFileInfo outputInfo( fileName );
+      fileName = QString( "%1/%2.vrt" ).arg( fileName, outputInfo.fileName() );
+    }
+
+    if ( d.addToCanvas() )
+    {
+      addRasterLayers( QStringList( fileName ) );
+    }
+
+    emit layerSavedAs( rasterLayer, fileName );
+    messageBar()->pushMessage( tr( "Saving done" ),
+                               tr( "Export to raster file has been completed" ),
+                               QgsMessageBar::INFO, messageTimeout() );
   }
 }
 
@@ -6239,8 +6249,7 @@ QgsComposer* QgisApp::duplicateComposer( QgsComposer* currentComposer, QString t
 
   // hiding composer until template is loaded is much faster, provide feedback to user
   newComposer->hide();
-  QApplication::setOverrideCursor( Qt::BusyCursor );
-  if ( !newComposer->composition()->loadFromTemplate( currentDoc, nullptr, false ) )
+  if ( !newComposer->loadFromTemplate( currentDoc, true ) )
   {
     deleteComposer( newComposer );
     newComposer = nullptr;
@@ -6248,7 +6257,6 @@ QgsComposer* QgisApp::duplicateComposer( QgsComposer* currentComposer, QString t
     return newComposer;
   }
   newComposer->activate();
-  QApplication::restoreOverrideCursor();
 
   return newComposer;
 }
@@ -7281,6 +7289,13 @@ void QgisApp::pasteStyle( QgsMapLayer * destinationLayer )
         messageBar()->pushMessage( tr( "Cannot parse style" ),
                                    errorMsg,
                                    QgsMessageBar::CRITICAL, messageTimeout() );
+        return;
+      }
+
+      bool isVectorStyle = doc.elementsByTagName( "pipe" ).isEmpty();
+      if (( selectionLayer->type() == QgsMapLayer::RasterLayer && isVectorStyle ) ||
+          ( selectionLayer->type() == QgsMapLayer::VectorLayer && !isVectorStyle ) )
+      {
         return;
       }
 
@@ -8657,7 +8672,7 @@ void QgisApp::apiDocumentation()
 
 void QgisApp::reportaBug()
 {
-  openURL( tr( "https://qgis.org/en/site/getinvolved/development/index.html#bugs-features-and-issues" ), false );
+  openURL( tr( "https://qgis.org/en/site/getinvolved/development/bugreporting.html" ), false );
 }
 void QgisApp::supportProviders()
 {
@@ -10845,13 +10860,13 @@ void QgisApp::projectChanged( const QDomDocument &doc )
   if ( !prevProjectDir.isNull() )
   {
     QString prev = prevProjectDir;
-    expr = QString( "sys.path.remove('%1'); " ).arg( prev.replace( '\'', "\\'" ) );
+    expr = QString( "sys.path.remove(u'%1'); " ).arg( prev.replace( '\'', "\\'" ) );
   }
 
   prevProjectDir = fi.canonicalPath();
 
   QString prev = prevProjectDir;
-  expr += QString( "sys.path.append('%1')" ).arg( prev.replace( '\'', "\\'" ) );
+  expr += QString( "sys.path.append(u'%1')" ).arg( prev.replace( '\'', "\\'" ) );
 
   QgsPythonRunner::run( expr );
 }
@@ -10983,8 +10998,6 @@ void QgisApp::showLayerProperties( QgsMapLayer *ml )
 void QgisApp::namSetup()
 {
   QgsNetworkAccessManager *nam = QgsNetworkAccessManager::instance();
-
-  namUpdate();
 
   connect( nam, SIGNAL( authenticationRequired( QNetworkReply *, QAuthenticator * ) ),
            this, SLOT( namAuthenticationRequired( QNetworkReply *, QAuthenticator * ) ) );

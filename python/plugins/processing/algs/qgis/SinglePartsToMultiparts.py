@@ -54,7 +54,7 @@ class SinglePartsToMultiparts(GeoAlgorithm):
         layer = dataobjects.getObjectFromUri(self.getParameterValue(self.INPUT))
         fieldName = self.getParameterValue(self.FIELD)
 
-        geomType = self.singleToMultiGeom(layer.dataProvider().geometryType())
+        geomType = self.singleToMultiGeom(layer.wkbType())
 
         writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
             layer.pendingFields().toList(), geomType, layer.crs())
@@ -98,7 +98,9 @@ class SinglePartsToMultiparts(GeoAlgorithm):
 
             del writer
         else:
-            raise GeoAlgorithmExecutionException(self.tr('Invalid unique ID field'))
+            raise GeoAlgorithmExecutionException(
+                self.tr('At least two features must have same attribute '
+                        'value! Please choose another field...'))
 
     def singleToMultiGeom(self, wkbType):
         try:

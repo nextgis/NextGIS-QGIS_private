@@ -568,6 +568,11 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri )
     return;
   }
 
+  if ( mTableBased && hasRowid() )
+  {
+    mPrimaryKey = "ROWID";
+  }
+
   // retrieve version information
   spatialiteVersion();
 
@@ -584,6 +589,7 @@ QgsSpatiaLiteProvider::QgsSpatiaLiteProvider( QString const &uri )
 QgsSpatiaLiteProvider::~QgsSpatiaLiteProvider()
 {
   closeDb();
+  invalidateConnections( mSqlitePath );
 }
 
 QgsAbstractFeatureSource* QgsSpatiaLiteProvider::featureSource() const
@@ -649,9 +655,6 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
     fld = fld->Next;
   }
 
-  mPrimaryKey.clear();
-  mPrimaryKeyAttrs.clear();
-
   QString sql = QString( "PRAGMA table_info(%1)" ).arg( quotedIdentifier( mTableName ) );
 
   char **results;
@@ -668,8 +671,10 @@ void QgsSpatiaLiteProvider::loadFieldsAbstractInterface( gaiaVectorLayerPtr lyr 
       if ( pk.toInt() == 0 )
         continue;
 
-      if ( mPrimaryKey.isEmpty() )
+      if ( mPrimaryKeyAttrs.isEmpty() )
         mPrimaryKey = name;
+      else
+        mPrimaryKey.clear();
       mPrimaryKeyAttrs << i - 1;
     }
   }
@@ -766,7 +771,10 @@ void QgsSpatiaLiteProvider::loadFields()
         {
           // found a Primary Key column
           pkCount++;
-          pkName = name;
+          if ( mPrimaryKeyAttrs.isEmpty() )
+            pkName = name;
+          else
+            pkName.clear();
           mPrimaryKeyAttrs << i - 1;
           QgsDebugMsg( "found primaryKey " + name );
         }
@@ -841,7 +849,10 @@ void QgsSpatiaLiteProvider::loadFields()
         if ( name == mPrimaryKey )
         {
           pkCount++;
-          pkName = name;
+          if ( mPrimaryKeyAttrs.isEmpty() )
+            pkName = name;
+          else
+            pkName.clear();
           mPrimaryKeyAttrs << i - 1;
           QgsDebugMsg( "found primaryKey " + name );
         }
@@ -937,6 +948,17 @@ bool QgsSpatiaLiteProvider::hasTriggers()
   ret = sqlite3_get_table( sqliteHandle, sql.toUtf8().constData(), &results, &rows, &columns, &errMsg );
   sqlite3_free_table( results );
   return ( ret == SQLITE_OK && rows > 0 );
+}
+
+bool QgsSpatiaLiteProvider::hasRowid()
+{
+  if ( attributeFields.fieldNameIndex( "ROWID" ) >= 0 )
+    return false;
+
+  // table without rowid column
+  QString sql = QString( "SELECT rowid FROM %1 WHERE 0" ).arg( quotedIdentifier( mTableName ) );
+  char *errMsg = nullptr;
+  return sqlite3_exec( sqliteHandle, sql.toUtf8(), nullptr, nullptr, &errMsg ) == SQLITE_OK;
 }
 
 
@@ -5308,7 +5330,7 @@ QGISEXTERN bool saveStyle( const QString& uri, const QString& qmlStyle, const QS
                          ") VALUES ("
                          "%1,%2,%3,%4,%5,%6,%7,%8,%9,%10%12"
                          ")" )
-                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
+                .arg( QgsSpatiaLiteProvider::quotedValue( QString() ) )
                 .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
                 .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
                 .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) )
@@ -5323,12 +5345,10 @@ QGISEXTERN bool saveStyle( const QString& uri, const QString& qmlStyle, const QS
 
   QString checkQuery = QString( "SELECT styleName"
                                 " FROM layer_styles"
-                                " WHERE f_table_catalog=%1"
-                                " AND f_table_schema=%2"
-                                " AND f_table_name=%3"
-                                " AND f_geometry_column=%4"
-                                " AND styleName=%5" )
-                       .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
+                                " WHERE f_table_schema=%1"
+                                " AND f_table_name=%2"
+                                " AND f_geometry_column=%3"
+                                " AND styleName=%4" )
                        .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
                        .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
                        .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) )
@@ -5362,17 +5382,15 @@ QGISEXTERN bool saveStyle( const QString& uri, const QString& qmlStyle, const QS
                    ",styleSLD=%3"
                    ",description=%4"
                    ",owner=%5"
-                   " WHERE f_table_catalog=%6"
-                   " AND f_table_schema=%7"
-                   " AND f_table_name=%8"
-                   " AND f_geometry_column=%9"
-                   " AND styleName=%10" )
+                   " WHERE f_table_schema=%6"
+                   " AND f_table_name=%7"
+                   " AND f_geometry_column=%8"
+                   " AND styleName=%9" )
           .arg( useAsDefault ? "1" : "0" )
           .arg( QgsSpatiaLiteProvider::quotedValue( qmlStyle ) )
           .arg( QgsSpatiaLiteProvider::quotedValue( sldStyle ) )
           .arg( QgsSpatiaLiteProvider::quotedValue( styleDescription.isEmpty() ? QDateTime::currentDateTime().toString() : styleDescription ) )
           .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.username() ) )
-          .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
           .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
           .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
           .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) )
@@ -5383,11 +5401,9 @@ QGISEXTERN bool saveStyle( const QString& uri, const QString& qmlStyle, const QS
   {
     QString removeDefaultSql = QString( "UPDATE layer_styles"
                                         " SET useAsDefault=0"
-                                        " WHERE f_table_catalog=%1"
-                                        " AND f_table_schema=%2"
-                                        " AND f_table_name=%3"
-                                        " AND f_geometry_column=%4" )
-                               .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
+                                        " WHERE f_table_schema=%1"
+                                        " AND f_table_name=%2"
+                                        " AND f_geometry_column=%3" )
                                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
                                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
                                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) );
@@ -5438,13 +5454,11 @@ QGISEXTERN QString loadStyle( const QString& uri, QString& errCause )
 
   QString selectQmlQuery = QString( "SELECT styleQML"
                                     " FROM layer_styles"
-                                    " WHERE f_table_catalog=%1"
-                                    " AND f_table_schema=%2"
-                                    " AND f_table_name=%3"
-                                    " AND f_geometry_column=%4"
+                                    " WHERE f_table_schema=%1"
+                                    " AND f_table_name=%2"
+                                    " AND f_geometry_column=%3"
                                     " ORDER BY CASE WHEN useAsDefault THEN 1 ELSE 2 END"
                                     ",update_time DESC LIMIT 1" )
-                           .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
                            .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
                            .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
                            .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) );
@@ -5521,11 +5535,9 @@ QGISEXTERN int listStyles( const QString &uri, QStringList &ids, QStringList &na
   // get them
   QString selectRelatedQuery = QString( "SELECT id,styleName,description"
                                         " FROM layer_styles"
-                                        " WHERE f_table_catalog=%1"
-                                        " AND f_table_schema=%2"
-                                        " AND f_table_name=%3"
-                                        " AND f_geometry_column=%4" )
-                               .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
+                                        " WHERE f_table_schema=%1"
+                                        " AND f_table_name=%2"
+                                        " AND f_geometry_column=%3" )
                                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
                                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
                                .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) );
@@ -5550,9 +5562,8 @@ QGISEXTERN int listStyles( const QString &uri, QStringList &ids, QStringList &na
 
   QString selectOthersQuery = QString( "SELECT id,styleName,description"
                                        " FROM layer_styles"
-                                       " WHERE NOT (f_table_catalog=%1 AND f_table_schema=%2 AND f_table_name=%3 AND f_geometry_column=%4)"
+                                       " WHERE NOT (f_table_schema=%1 AND f_table_name=%2 AND f_geometry_column=%3)"
                                        " ORDER BY update_time DESC" )
-                              .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.database() ) )
                               .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.schema() ) )
                               .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.table() ) )
                               .arg( QgsSpatiaLiteProvider::quotedValue( dsUri.geometryColumn() ) );

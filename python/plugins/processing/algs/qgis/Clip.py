@@ -34,10 +34,6 @@ from processing.core.parameters import ParameterVector
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects, vector
 
-GEOM_25D = [QGis.WKBPoint25D, QGis.WKBLineString25D, QGis.WKBPolygon25D,
-            QGis.WKBMultiPoint25D, QGis.WKBMultiLineString25D,
-            QGis.WKBMultiPolygon25D]
-
 
 class Clip(GeoAlgorithm):
 
@@ -60,15 +56,9 @@ class Clip(GeoAlgorithm):
         layerB = dataobjects.getObjectFromUri(
             self.getParameterValue(Clip.OVERLAY))
 
-        geomType = layerA.dataProvider().geometryType()
-        if geomType in GEOM_25D:
-            raise GeoAlgorithmExecutionException(
-                self.tr('Input layer has unsupported geometry type {}').format(geomType))
-
-        writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
-            layerA.pendingFields(),
-            layerA.dataProvider().geometryType(),
-            layerA.dataProvider().crs())
+        geomType = QGis.multiType(layerA.wkbType())
+        fields = layerA.pendingFields()
+        writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(fields, geomType, layerA.crs())
 
         inFeatA = QgsFeature()
         inFeatB = QgsFeature()

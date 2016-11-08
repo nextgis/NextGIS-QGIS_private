@@ -43,6 +43,8 @@
 
 #cmakedefine USING_NMAKE
 
+#cmakedefine USING_NINJA
+
 #cmakedefine HAVE_POSTGRESQL
 
 #cmakedefine HAVE_SPATIALITE

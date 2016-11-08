@@ -15,13 +15,15 @@ __revision__ = '$Format:%H$'
 import qgis
 import os
 
-from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsFeature
+from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsFeature, QgsField, QgsMapLayerRegistry, QgsVectorJoinInfo, NULL
 from qgis.testing import (start_app,
                           unittest
                           )
+from PyQt4.QtCore import QVariant
 from utilities import (unitTestDataPath,
                        compareWkt
                        )
+
 start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
@@ -80,23 +82,20 @@ class TestQgsFeatureIterator(unittest.TestCase):
 
         ids = [feat.id() for feat in pointLayer.getFeatures(QgsFeatureRequest().setFilterFids([7, 8, 12, 30]))]
         expectedIds = [7, 8, 12]
-        myMessage = '\nExpected: {0} features\nGot: {1} features'.format(repr(expectedIds), repr(ids))
-        assert ids == expectedIds, myMessage
+        self.assertEquals(set(ids), set(expectedIds))
 
         pointLayer.startEditing()
         self.addFeatures(pointLayer)
 
         ids = [feat.id() for feat in pointLayer.getFeatures(QgsFeatureRequest().setFilterFids([-4, 7, 8, 12, 30]))]
         expectedIds = [-4, 7, 8, 12]
-        myMessage = '\nExpected: {0} features\nGot: {1} features'.format(repr(expectedIds), repr(ids))
-        assert ids == expectedIds, myMessage
+        self.assertEquals(set(ids), set(expectedIds))
 
         pointLayer.rollBack()
 
         ids = [feat.id() for feat in pointLayer.getFeatures(QgsFeatureRequest().setFilterFids([-2, 7, 8, 12, 30]))]
         expectedIds = [7, 8, 12]
-        myMessage = '\nExpected: {0} features\nGot: {1} features'.format(repr(expectedIds), repr(ids))
-        assert ids == expectedIds, myMessage
+        self.assertEquals(set(ids), set(expectedIds))
 
     def addFeatures(self, vl):
         feat = QgsFeature()
@@ -110,6 +109,138 @@ class TestQgsFeatureIterator(unittest.TestCase):
         feat.setFields(fields)
         feat['Staff'] = 2
         vl.addFeature(feat)
+
+    def test_ExpressionFieldNested(self):
+        myShpFile = os.path.join(TEST_DATA_DIR, 'points.shp')
+        layer = QgsVectorLayer(myShpFile, 'Points', 'ogr')
+        self.assertTrue(layer.isValid())
+
+        cnt = layer.pendingFields().count()
+        idx = layer.addExpressionField('"Staff"*2', QgsField('exp1', QVariant.LongLong))
+        idx = layer.addExpressionField('"exp1"-1', QgsField('exp2', QVariant.LongLong))
+
+        fet = next(layer.getFeatures(QgsFeatureRequest().setSubsetOfAttributes(['exp2'], layer.fields())))
+        self.assertEqual(fet['Class'], NULL)
+        # nested virtual fields should make all these attributes be fetched
+        self.assertEqual(fet['Staff'], 2)
+        self.assertEqual(fet['exp2'], 3)
+        self.assertEqual(fet['exp1'], 4)
+
+    def test_ExpressionFieldNestedGeometry(self):
+        myShpFile = os.path.join(TEST_DATA_DIR, 'points.shp')
+        layer = QgsVectorLayer(myShpFile, 'Points', 'ogr')
+        self.assertTrue(layer.isValid())
+
+        cnt = layer.pendingFields().count()
+        idx = layer.addExpressionField('$x*2', QgsField('exp1', QVariant.LongLong))
+        idx = layer.addExpressionField('"exp1"/1.5', QgsField('exp2', QVariant.LongLong))
+
+        fet = next(layer.getFeatures(QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry).setSubsetOfAttributes(['exp2'], layer.fields())))
+        # nested virtual fields should have made geometry be fetched
+        self.assertEqual(fet['exp2'], -156)
+        self.assertEqual(fet['exp1'], -234)
+
+    def test_ExpressionFieldNestedCircular(self):
+        """ test circular virtual field definitions """
+
+        myShpFile = os.path.join(TEST_DATA_DIR, 'points.shp')
+        layer = QgsVectorLayer(myShpFile, 'Points', 'ogr')
+        self.assertTrue(layer.isValid())
+
+        cnt = layer.pendingFields().count()
+        idx = layer.addExpressionField('"exp3"*2', QgsField('exp1', QVariant.LongLong))
+        idx = layer.addExpressionField('"exp1"-1', QgsField('exp2', QVariant.LongLong))
+        idx = layer.addExpressionField('"exp2"*3', QgsField('exp3', QVariant.LongLong))
+
+        # really just testing that this doesn't hang/crash... there's no good result here!
+        fet = next(layer.getFeatures(QgsFeatureRequest().setSubsetOfAttributes(['exp2'], layer.fields())))
+        self.assertEqual(fet['Class'], NULL)
+
+    def test_JoinUsingExpression(self):
+        """ test joining a layer using a virtual field """
+        joinLayer = QgsVectorLayer(
+            "Point?field=x:string&field=y:integer&field=z:integer",
+            "joinlayer", "memory")
+        pr = joinLayer.dataProvider()
+        f1 = QgsFeature()
+        f1.setAttributes(["foo", 246, 321])
+        f2 = QgsFeature()
+        f2.setAttributes(["bar", 456, 654])
+        self.assertTrue(pr.addFeatures([f1, f2]))
+
+        layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer",
+                               "addfeat", "memory")
+        pr = layer.dataProvider()
+        f = QgsFeature()
+        f.setAttributes(["test", 123])
+        self.assertTrue(pr.addFeatures([f]))
+        layer.addExpressionField('"fldint"*2', QgsField('exp1', QVariant.LongLong))
+
+        QgsMapLayerRegistry.instance().addMapLayers([layer, joinLayer])
+
+        join = QgsVectorJoinInfo()
+        join.targetFieldName = "exp1"
+        join.joinLayerId = joinLayer.id()
+        join.joinFieldName = "y"
+        join.memoryCache = True
+        layer.addJoin(join)
+
+        f = QgsFeature()
+        fi = layer.getFeatures()
+        self.assertTrue(fi.nextFeature(f))
+        attrs = f.attributes()
+        self.assertEqual(attrs[0], "test")
+        self.assertEqual(attrs[1], 123)
+        self.assertEqual(attrs[2], "foo")
+        self.assertEqual(attrs[3], 321)
+        self.assertEqual(attrs[4], 246)
+        self.assertFalse(fi.nextFeature(f))
+
+        QgsMapLayerRegistry.instance().removeMapLayers([layer, joinLayer])
+
+    def test_JoinUsingExpression2(self):
+        """ test joining a layer using a virtual field (the other way!) """
+        joinLayer = QgsVectorLayer(
+            "Point?field=x:string&field=y:integer&field=z:integer",
+            "joinlayer", "memory")
+        pr = joinLayer.dataProvider()
+        f1 = QgsFeature()
+        f1.setAttributes(["foo", 246, 321])
+        f2 = QgsFeature()
+        f2.setAttributes(["bar", 456, 654])
+        self.assertTrue(pr.addFeatures([f1, f2]))
+        joinLayer.addExpressionField('"y"/2', QgsField('exp1', QVariant.LongLong))
+
+        layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer",
+                               "addfeat", "memory")
+        pr = layer.dataProvider()
+        f = QgsFeature()
+        f.setAttributes(["test", 123])
+        self.assertTrue(pr.addFeatures([f]))
+
+        QgsMapLayerRegistry.instance().addMapLayers([layer, joinLayer])
+
+        join = QgsVectorJoinInfo()
+        join.targetFieldName = "fldint"
+        join.joinLayerId = joinLayer.id()
+        join.joinFieldName = "exp1"
+        join.memoryCache = True
+        layer.addJoin(join)
+
+        f = QgsFeature()
+        fi = layer.getFeatures()
+        self.assertTrue(fi.nextFeature(f))
+        attrs = f.attributes()
+        self.assertEqual(attrs[0], "test")
+        self.assertEqual(attrs[1], 123)
+        self.assertEqual(attrs[2], "foo")
+        self.assertEqual(attrs[3], 246)
+        self.assertEqual(attrs[4], 321)
+        self.assertFalse(fi.nextFeature(f))
+
+        QgsMapLayerRegistry.instance().removeMapLayers([layer, joinLayer])
+        # try the other way too
+
 
 if __name__ == '__main__':
     unittest.main()

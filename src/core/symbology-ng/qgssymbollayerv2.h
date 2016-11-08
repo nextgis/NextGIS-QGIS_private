@@ -89,6 +89,7 @@ class CORE_EXPORT QgsSymbolLayerV2
      */
     virtual QgsSymbolLayerV2* clone() const = 0;
 
+    //! Writes the SLD element following the SLD v1.1 specs
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const
     { Q_UNUSED( props ); element.appendChild( doc.createComment( QString( "SymbolLayerV2 %1 not implemented yet" ).arg( layerType() ) ) ); }
 
@@ -235,17 +236,13 @@ class CORE_EXPORT QgsSymbolLayerV2
      */
     virtual QVariant evaluateDataDefinedProperty( const QString& property, const QgsSymbolV2RenderContext& context, const QVariant& defaultVal = QVariant(), bool *ok = nullptr ) const;
 
-    virtual bool writeDxf( QgsDxfExport& e,
-                           double mmMapUnitScaleFactor,
-                           const QString& layerName,
-                           QgsSymbolV2RenderContext* context,
-                           const QgsFeature* f,
-                           QPointF shift = QPointF( 0.0, 0.0 ) ) const;
+    virtual bool writeDxf( QgsDxfExport &e, double mmMapUnitScaleFactor, const QString &layerName, QgsSymbolV2RenderContext &context, QPointF shift = QPointF( 0.0, 0.0 ) ) const;
 
     virtual double dxfWidth( const QgsDxfExport& e, QgsSymbolV2RenderContext& context ) const;
     virtual double dxfOffset( const QgsDxfExport& e, QgsSymbolV2RenderContext& context ) const;
 
     virtual QColor dxfColor( QgsSymbolV2RenderContext& context ) const;
+    virtual double dxfAngle( QgsSymbolV2RenderContext& context ) const;
 
     virtual QVector<qreal> dxfCustomDashPattern( QgsSymbolV2::OutputUnit& unit ) const;
     virtual Qt::PenStyle dxfPenStyle() const;
@@ -433,6 +430,7 @@ class CORE_EXPORT QgsMarkerSymbolLayerV2 : public QgsSymbolLayerV2
     void setOffset( QPointF offset ) { mOffset = offset; }
     QPointF offset() const { return mOffset; }
 
+    //! Writes the SLD element following the SLD v1.1 specs
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const override;
 
     virtual void writeSldMarker( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const
