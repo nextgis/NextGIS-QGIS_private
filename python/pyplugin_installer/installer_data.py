@@ -92,7 +92,8 @@ seenPluginGroup = "/Qgis/plugin-seen"
 
 
 # Repositories: (name, url, possible depreciated url)
-officialRepo = (QCoreApplication.translate("QgsPluginInstaller", "QGIS Official Plugin Repository"), "http://plugins.qgis.org/plugins/plugins.xml", "http://plugins.qgis.org/plugins")
+# officialRepo = (QCoreApplication.translate("QgsPluginInstaller", "QGIS Official Plugin Repository"), "http://plugins.qgis.org/plugins/plugins.xml", "http://plugins.qgis.org/plugins")
+officialRepo = ("QGIS Official Plugin Repository", "http://plugins.qgis.org/plugins/plugins.xml", "http://plugins.qgis.org/plugins")
 depreciatedRepos = [
     ("Old QGIS Official Repository", "http://pyqgis.org/repo/official"),
     ("Old QGIS Contributed Repository", "http://pyqgis.org/repo/contributed"),
@@ -111,6 +112,11 @@ depreciatedRepos = [
     ("Volkan Kepoglu's Repository", "http://ggit.metu.edu.tr/~volkan/plugins.xml")
 ]
 
+officialNextGISRepo = (
+    "NextGIS Public plugin updates",
+    "http://nextgis.ru/programs/qgis/qgis-repo.xml",
+    ""
+)
 
 # --- common functions ------------------------------------------------------------------- #
 def removeDir(path):
@@ -307,27 +313,30 @@ class Repositories(QObject):
         settings = QSettings()
         settings.beginGroup(reposGroup)
         # first, update repositories in QSettings if needed
-        officialRepoPresent = False
-        for key in settings.childGroups():
-            url = settings.value(key + "/url", "", type=unicode)
-            if url == officialRepo[1]:
-                officialRepoPresent = True
-            if url == officialRepo[2]:
-                settings.setValue(key + "/url", officialRepo[1]) # correct a depreciated url
-                officialRepoPresent = True
-        if not officialRepoPresent:
-            settings.setValue(officialRepo[0] + "/url", officialRepo[1])
+        
+        for repo in [officialRepo, officialNextGISRepo]:
+            repoPresent = False
+            for key in settings.childGroups():
+                url = settings.value(key + "/url", "", type=unicode)
+                if url == repo[1]:
+                    repoPresent = True
+                if url == repo[2]:
+                    settings.setValue(key + "/url", repo[1]) # correct a depreciated url
+                    repoPresent = True
+            if not repoPresent:
+                settings.setValue(repo[0] + "/url", repo[1])
 
         for key in settings.childGroups():
-            self.mRepositories[key] = {}
-            self.mRepositories[key]["url"] = settings.value(key + "/url", "", type=unicode)
-            self.mRepositories[key]["authcfg"] = settings.value(key + "/authcfg", "", type=unicode)
-            self.mRepositories[key]["enabled"] = settings.value(key + "/enabled", True, type=bool)
-            self.mRepositories[key]["valid"] = settings.value(key + "/valid", True, type=bool)
-            self.mRepositories[key]["Relay"] = Relay(key)
-            self.mRepositories[key]["xmlData"] = None
-            self.mRepositories[key]["state"] = 0
-            self.mRepositories[key]["error"] = ""
+            key_ts = QCoreApplication.translate("QgsPluginInstaller", key)
+            self.mRepositories[key_ts] = {}
+            self.mRepositories[key_ts]["url"] = settings.value(key + "/url", "", type=unicode)
+            self.mRepositories[key_ts]["authcfg"] = settings.value(key + "/authcfg", "", type=unicode)
+            self.mRepositories[key_ts]["enabled"] = settings.value(key + "/enabled", True, type=bool)
+            self.mRepositories[key_ts]["valid"] = settings.value(key + "/valid", True, type=bool)
+            self.mRepositories[key_ts]["Relay"] = Relay(key)
+            self.mRepositories[key_ts]["xmlData"] = None
+            self.mRepositories[key_ts]["state"] = 0
+            self.mRepositories[key_ts]["error"] = ""
         settings.endGroup()
 
     # ----------------------------------------- #

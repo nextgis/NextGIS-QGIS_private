@@ -3212,6 +3212,9 @@ void QgisApp::about()
     versionString += "<td colspan=2>" + tr( "This copy of QGIS writes debugging output." ) + "</td>";
 #endif
 
+    versionString += "</tr><tr>";
+    versionString += "<td>" + tr( "Build time" ) + "</td><td>" + NGQ_BUILD_DATE + "</td>";
+
     versionString += "</tr></table></div></body></html>";
 
     abt->setVersion( versionString );

@@ -82,9 +82,9 @@ QString QgsApplication::sUserName;
 QString QgsApplication::sUserFullName;
 QString QgsApplication::sPlatformName = "desktop";
 
-const char* QgsApplication::QGIS_ORGANIZATION_NAME = "QGIS";
-const char* QgsApplication::QGIS_ORGANIZATION_DOMAIN = "qgis.org";
-const char* QgsApplication::QGIS_APPLICATION_NAME = "QGIS2";
+const char* QgsApplication::QGIS_ORGANIZATION_NAME = "NextGIS";
+const char* QgsApplication::QGIS_ORGANIZATION_DOMAIN = "nextgis.com";
+const char* QgsApplication::QGIS_APPLICATION_NAME = "NGQGIS";
 
 /*!
   \class QgsApplication
